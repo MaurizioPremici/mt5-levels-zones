@@ -1,0 +1,7 @@
+.DS_Store
+__pycache__/
+*.log
+src/*.ex5
+tests/*.ex5
+build/local-*
+artifacts/
