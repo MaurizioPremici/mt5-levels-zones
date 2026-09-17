@@ -62,6 +62,16 @@ Levels are stored locally in `MQL5/Files/LevelsZones`. A `.bak` file keeps the p
 
 Removing the indicator removes its drawings from that chart. Saved levels remain available when you add it again. The indicator supports up to 128 fields per symbol. It does not manage labels or objects created by other indicators.
 
+## Templates
+
+Templates that include Levels and Zones can be applied again without losing the panel. Version 1.0.3 also supports templates saved by older versions, which may contain stale internal objects. Saved prices are loaded from the current symbol's local store.
+
+A template that does not include the indicator still removes it, as expected in MT5. Add Levels and Zones before saving the template you want to use as Default.
+
+## Changes in 1.0.3
+
+Fixed the panel disappearing after loading a template containing Levels and Zones. Old templates could restore an internal marker that was mistaken for an active instance. The instance check now uses a temporary runtime lock, and restored panel objects are rebuilt from saved symbol data.
+
 ## Changes in 1.0.2
 
 Added Clear all. Button events are now restricted to this panel, so clicking another tool no longer resets its buttons.

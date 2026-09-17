@@ -1,6 +1,6 @@
 // Levels and Zones - drawing-only indicator, inspired by the supplied GUI reference.
 #property strict
-#property version "1.02"
+#property version "1.03"
 #property description "Draw horizontal lines and zones. Save and sync by symbol."
 #property indicator_chart_window
 #property indicator_plots 0
@@ -12,6 +12,7 @@ input double PanelScale=1.0; // Panel scale (0.75 - 1.75)
 Level levels[],draft[],drag_before[];
 long g_revision=0,seen_revision=0;
 string status="";
+string instance_lock="";
 int panel_x=20,panel_y=12,panel_h=0,first_row=0,expanded=-1;
 bool panel_hidden=false,panel_collapsed=false,initialized=false;
 double scale=1, font_scale=1;
@@ -288,9 +289,15 @@ void MouseMove(const int x,const int y,const bool down)
 }
 int OnInit()
 {
-   if(ObjectFind(0,"LZ_INSTANCE")>=0) { Print("Levels and Zones: indicator already on this chart."); return INIT_FAILED; }
-   ObjectCreate(0,"LZ_INSTANCE",OBJ_LABEL,0,0,0);
-   ObjectSetString(0,"LZ_INSTANCE",OBJPROP_TEXT,""); ObjectSetInteger(0,"LZ_INSTANCE",OBJPROP_HIDDEN,true);
+   // Chart objects are serialized into templates; they cannot prove an instance is alive.
+   // This session-only lock is not part of templates and is released after teardown.
+   instance_lock="LZ_ACTIVE_"+IntegerToString(ChartID());
+   if((!GlobalVariableCheck(instance_lock) && !GlobalVariableTemp(instance_lock)) ||
+      !GlobalVariableSetOnCondition(instance_lock,1.0,0.0))
+   { Print("Levels and Zones: another instance is active, or the chart lock is unavailable."); return INIT_FAILED; }
+   // Discard only this tool's restored visuals. Prices are loaded from the symbol store.
+   ObjectDelete(0,"LZ_INSTANCE"); ObjectsDeleteAll(0,"LZ_UI_"); ObjectsDeleteAll(0,"LZ_TAG_");
+   ObjectDelete(0,"LZ_CANVAS"); ObjectDelete(0,"LZ_HOVER");
    initialized=true; font_scale=MathMax(0.75,MathMin(1.75,PanelScale));
    scale=font_scale*MathMax(1.0,(double)TerminalInfoInteger(TERMINAL_SCREEN_DPI)/96.0);
    IndicatorSetString(INDICATOR_SHORTNAME,"Levels and Zones");
@@ -314,6 +321,7 @@ void OnDeinit(const int reason)
    ChartSetInteger(0,CHART_EVENT_MOUSE_MOVE,old_mouse_move);
    ChartSetInteger(0,CHART_FOREGROUND,old_foreground);
    DestroyDrawing(); ObjectsDeleteAll(0,"LZ_UI_"); ObjectDelete(0,"LZ_INSTANCE"); ChartRedraw();
+   GlobalVariableSetOnCondition(instance_lock,0.0,1.0); initialized=false;
 }
 void OnTimer()
 {
