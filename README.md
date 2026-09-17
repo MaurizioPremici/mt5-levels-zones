@@ -1,89 +1,59 @@
 # MT5 Levels and Zones
 
-A chart panel for drawing horizontal lines and price zones in MetaTrader 5. Enter a price, give it a name, and choose how it looks. Built for manual chart marking, with an English interface.
+A manual scenario panel for MetaTrader 5. Keep price levels, zones, timeframes, setup states and confirmation notes together on a chart. Enter everything yourself or import a JSON scenario.
 
-It draws only. It does not place orders, read positions, or generate trading signals.
+It draws only. It does not read positions, evaluate conditions, generate signals or place orders.
 
 ![Original design reference](docs/gui-reference.png)
 
-*This image is the original design reference. The working panel uses native MT5 controls and starts with empty price fields.*
+*Original design reference. The working panel uses native MT5 controls and includes the scenario fields described below.*
 
-## What it does
+## Use
 
-- Includes Entry Price, Breakout Price, Retest Price, Rejection Price, Support, Resistance, SL, TP 1, and TP 2.
-- Lets you rename fields and add your own.
-- Draws a horizontal line for one price, or a filled zone for two prices.
-- Offers line and fill colors, HEX input, solid or dashed lines, thickness, and transparency.
-- Extends zones across the chart, including older candles.
-- Shows names and prices on the left. Nearby labels are grouped, with details available on hover.
-- Supports dragging lines, zone edges, or the whole zone. A lock prevents accidental moves.
-- Saves when you click Apply or finish a drag.
-- Keeps levels when you change timeframe. Charts with the same exact symbol share saved levels when the indicator is attached to each chart in the same terminal. Different symbols stay separate.
+Choose a direction and status in the header. Each row has a price, optional zone endpoint, timeframe, manual state, color, visibility and lock. Entry and SL can stay empty while a scenario is waiting for confirmation.
+
+- **SETUP** includes Entry Price, Breakout Level, Retest Zone, Rejection Zone, Support, Resistance, SL, TP 1 and TP 2.
+- **OPEN_POSITION** separates the supplied open price, Bid/Ask, current SL/TP, proposed management levels and invalidation. LONG/SHORT and LASCIA/CHIUDI/DATI_INSUFFICIENTI are manual descriptions. Switching mode starts an empty draft after confirmation.
+- **...** opens field settings: Level/Zone, state, line style and width, colors, label visibility and position, opacity, row order and deletion. Edit Name and TF in the row above. TP target numbers remain explicit even when rows are renamed or reordered.
+- **+ Add field** offers Level, Zone, Support, Resistance, TP and Custom. Set the new row's name, type and timeframe before applying.
+- **Up/Down** scrolls rows. **Move up/down** in row settings changes their saved order.
+- **Activation condition** is a scrollable multiline editor with three visible lines. Its arrows move through the text and allow additional lines. Nothing in this text is executed.
+- **Apply** validates, draws, saves and syncs the exact symbol. A complete BUY requires SL < Entry < TP1 < TP2; SELL requires TP2 < TP1 < Entry < SL. WAIT can have undefined prices. Reversed zones are rejected.
+- **Clear all** asks for confirmation when prices exist, then clears prices, states, activation notes and the indicator's drawings. It keeps row definitions and styles.
+- **Load last scenario** discards the draft and loads the last applied scenario.
+- **Scenario / Import** manages provenance and imports a complete JSON scenario. See the [format and examples](docs/SCENARIO-FORMAT.md).
+
+Under Wine, double-click a price field to edit it. Prices accept a decimal point or comma, without thousands separators. Fields marked LEVEL have their To input disabled; select ZONE in settings before entering two endpoints.
+
+Visibility hides a drawing without erasing its price. Lock prevents chart dragging while still allowing explicit panel edits. Apply or discard a draft before dragging a line, zone edge or whole zone. Escape cancels a drag. The title bar moves the panel; `-` collapses it and `x` hides it while keeping drawings visible.
+
+Chart labels include name, timeframe, price and state. Nearby labels share a hover tooltip; labels become compact when the panel leaves little room. Line colors and state badge colors are independent.
+
+## Saved data and snapshots
+
+Applied scenarios and recovery drafts are stored per exact symbol in `MQL5/Files/LevelsZones`. Changes are autosaved as a draft after editing; drawings change on Apply. A draft based on an older saved revision cannot overwrite newer applied data from another chart. The latest edited recovery draft for a symbol is shared; avoid editing competing drafts on two charts at once.
+
+Charts with the indicator and the same exact symbol share applied scenarios across timeframes. Different pairs and broker suffixes stay separate. A `.bak` file holds the previous applied version. Version 1 saved levels are migrated on read, keeping their prices and styles; the original remains untouched until the first Apply. Keep a copy before downgrading: version 1 cannot read the new scenario format.
+
+Changing **Latest snapshot** leaves the levels bound to their original snapshot and marks them **OLD SNAPSHOT**. Reattribution requires an explicit confirmation. Import replaces the entire draft and does not carry old prices into a new snapshot. The plugin does not automatically discover exporter snapshots.
 
 ## Install
 
-Download the ZIP from [Releases](https://github.com/MaurizioPremici/mt5-levels-zones/releases), then copy its `MQL5/Indicators/LevelsZones` folder into your MT5 data folder. You can find that folder from **File → Open Data Folder** in MT5.
+Download the ZIP from [Releases](https://github.com/MaurizioPremici/mt5-levels-zones/releases), then copy `MQL5/Indicators/LevelsZones` into your MT5 data folder. Refresh Navigator and add **LevelsZones → LevelsZones** to each chart you want to use. Remove and reattach an already running copy after updating.
 
-Refresh the Navigator, then add **Indicators → LevelsZones → LevelsZones** to your chart. Add it to each chart you want to use.
-
-To build from source, copy the files in `src` into `MQL5/Indicators/LevelsZones`, open `LevelsZones.mq5` in MetaEditor, and press **F7**. The indicator uses the standard libraries included with MT5.
-
-For the standard MT5 Wine installation on macOS:
+To build with the standard macOS Wine installation:
 
 ```sh
 python3 build/compile.py
 python3 build/install.py
 ```
 
-You can pass a different MT5 data folder with `python3 build/install.py --data-dir PATH`.
+Or open `src/LevelsZones.mq5` in MetaEditor and compile with the accompanying headers. `PanelScale` adjusts the panel size; display DPI is handled separately.
 
-## Use
+Templates must include the indicator to keep it attached. The fix for restored template objects remains in place: an old template marker cannot be mistaken for a running instance.
 
-Enter a price in **Price / From**. Leave **To** empty for a line, or enter the other end of the range for a zone. Click **Apply** to draw and save. Changes in the panel remain a draft until you apply them.
+## Version 2.0.0
 
-Under Wine, double-click a price field to edit it. Check the full value after pasting. Use a decimal point or comma, without thousands separators. Invalid text and prices with too many decimal places are rejected.
+Adds manual scenarios, setup and open-position modes, timeframes and states, editable confirmation notes, JSON import, snapshot provenance, draft recovery and explicit zone validation. Existing drawing, dragging, symbol synchronization and template behavior are retained.
 
-- **...** opens appearance settings.
-- **ON/OFF** shows or hides a level.
-- **L/U** locks or unlocks movement. Apply the change before dragging.
-- **+ Add field** adds a custom field.
-- **Up/Down** scrolls through the rows.
-- **Clear all** immediately clears every price, line and zone for the current symbol, including locked and custom fields. Names and styles are kept. The empty values are saved and synced to the other charts of that exact symbol. Other pairs and drawings from other tools are unchanged.
-- **Reload** discards the draft and loads the last saved values.
-- **x** hides the panel while keeping the drawings visible.
-
-For a zone, drag either edge to resize it or the middle handle to move the whole range. Press Escape to cancel a drag. Apply or discard any draft before moving a drawing.
-
-Transparency runs from 0% (opaque) to 100% (invisible). The default is 80%. `PanelScale` adjusts the panel size; display DPI is handled separately for Retina screens.
-
-## Saved data
-
-Levels are stored locally in `MQL5/Files/LevelsZones`. A `.bak` file keeps the previous saved version. If two charts edit the same symbol, an older draft cannot overwrite a newer save without reloading first.
-
-Removing the indicator removes its drawings from that chart. Saved levels remain available when you add it again. The indicator supports up to 128 fields per symbol. It does not manage labels or objects created by other indicators.
-
-## Templates
-
-Templates that include Levels and Zones can be applied again without losing the panel. Version 1.0.3 also supports templates saved by older versions, which may contain stale internal objects. Saved prices are loaded from the current symbol's local store.
-
-A template that does not include the indicator still removes it, as expected in MT5. Add Levels and Zones before saving the template you want to use as Default.
-
-## Changes in 1.0.3
-
-Fixed the panel disappearing after loading a template containing Levels and Zones. Old templates could restore an internal marker that was mistaken for an active instance. The instance check now uses a temporary runtime lock, and restored panel objects are rebuilt from saved symbol data.
-
-## Changes in 1.0.2
-
-Added Clear all. Button events are now restricted to this panel, so clicking another tool no longer resets its buttons.
-
-## Changes in 1.0.1
-
-The interface is now in English, including tooltips and validation messages. Panel dragging uses cached control positions instead of repeatedly reading them from the chart. Updates are capped at about 30 per second, with the final position applied on release. Saved levels remain compatible with version 1.0.0.
-
-## Current status
-
-Compiled with **0 errors and 0 warnings**. Basic line drawing, zone drawing, and saved values across H4/H1 changes were checked in MT5 on macOS through Wine. Panel and label sizing were adjusted for Retina displays.
-
-This is a preview release. Full manual testing is still in progress, including clipboard editing under Wine, dragging, and synchronization between separate charts. See [validation notes](docs/VALIDATION.md) for the checks completed so far.
-
-The original GUI code is kept in `reference`, and the supplied design image is in `docs/gui-reference.png`.
+See [validation notes](docs/VALIDATION.md) for actual checks and remaining limitations. The original GUI source is in `reference`.

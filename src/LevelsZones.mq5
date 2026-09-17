@@ -1,15 +1,20 @@
 // Levels and Zones - drawing-only indicator, inspired by the supplied GUI reference.
 #property strict
-#property version "1.03"
+#property version "2.00"
 #property description "Draw horizontal lines and zones. Save and sync by symbol."
 #property indicator_chart_window
 #property indicator_plots 0
 #property indicator_buffers 0
 #include "LevelModel.mqh"
 #include "LevelStore.mqh"
+#include "ScenarioImport.mqh"
+#define PANEL_W 720
 input double PanelScale=1.0; // Panel scale (0.75 - 1.75)
 #define SYNC_EVENT 17051
-Level levels[],draft[],drag_before[];
+Level levels[],draft[],drag_before[],recovery_levels[],pending_import[];
+ScenarioState g_scenario,draft_scenario,recovery_scenario,pending_scenario;
+bool recovery_cached=false;
+string confirm_action="",confirm_text="";
 long g_revision=0,seen_revision=0;
 string status="";
 string instance_lock="";
@@ -59,18 +64,12 @@ void NotifyCharts(const bool cleared=false)
 bool CommitDraft()
 {
    SyncInputs(); Level normalized[]; CopyLevels(normalized,draft);
-   for(int i=0;i<ArraySize(normalized);i++)
-   {
-      string error;
-      if(!ValidateLevel(normalized[i],_Digits,error))
-      {
-         status=normalized[i].name+": "+error; first_row=i; expanded=-1;
-         BuildPanel(); return false;
-      }
-   }
+   ScenarioState meta=draft_scenario;
+   if(!ValidateScenario(meta,normalized,_Symbol,_Digits,status)) { BuildPanel();return false; }
    long next=g_revision;
-   if(!SaveLevels(_Symbol,_Digits,normalized,g_revision,next,status)) { StatusLine(); return false; }
+   if(!SaveScenario(_Symbol,_Digits,normalized,meta,g_revision,next,status)) { StatusLine(); return false; }
    g_revision=next; seen_revision=next; CopyLevels(levels,normalized); CopyLevels(draft,normalized);
+   g_scenario=meta;draft_scenario=meta;FileDelete(DataFile(_Symbol)+".draft");recovery_cached=false;
    status=""; editing=false; BuildPanel(); RenderLevels(); SaveView(); NotifyCharts(); return true;
 }
 bool ClearAllPrices()
@@ -78,15 +77,17 @@ bool ClearAllPrices()
    SyncInputs(); Level cleared[]; CopyLevels(cleared,draft);
    for(int i=0;i<ArraySize(cleared);i++)
    {
-      cleared[i].from=""; cleared[i].to="";
+      cleared[i].from=""; cleared[i].to="";cleared[i].state=cleared[i].semantic_type=="ENTRY"?"UNDEFINED":"INACTIVE";
       string error;
       if(!ValidateLevel(cleared[i],_Digits,error))
       { status=cleared[i].name+": "+error; StatusLine(); return false; }
    }
+   ScenarioState cleared_meta=draft_scenario;cleared_meta.overall_status="INACTIVE";cleared_meta.activation_condition="";
    long next=g_revision;
-   if(!SaveLevels(_Symbol,_Digits,cleared,g_revision,next,status)) { StatusLine(); return false; }
+   if(!SaveScenario(_Symbol,_Digits,cleared,cleared_meta,g_revision,next,status)) { StatusLine(); return false; }
    g_revision=next; seen_revision=next;
-   CopyLevels(levels,cleared); CopyLevels(draft,cleared);
+   CopyLevels(levels,cleared); CopyLevels(draft,cleared);g_scenario=cleared_meta;draft_scenario=cleared_meta;
+   FileDelete(DataFile(_Symbol)+".draft");recovery_cached=false;
    editing=false; palette_row=-1; expanded=-1;
    status="All prices cleared | "+_Symbol;
    BuildPanel(); RenderLevels(); SaveView(); NotifyCharts(true); return true;
@@ -94,24 +95,25 @@ bool ClearAllPrices()
 void ReloadSaved(const bool discard)
 {
    if(drag_kind!=0) return;
-   Level loaded[]; long next=0; string error;
-   if(!LoadLevels(_Symbol,_Digits,loaded,next,error)) { status=error; StatusLine(); return; }
+   Level loaded[]; ScenarioState loaded_meta; long next=0; string error;
+   if(!LoadScenario(_Symbol,_Digits,loaded,loaded_meta,next,error)) { status=error; StatusLine(); return; }
    if(!discard && next==seen_revision) return;
    SyncInputs();
    bool dirty=Dirty() || editing;
    seen_revision=next;
    if(!discard && dirty)
    {
-      CopyLevels(levels,loaded);
+      CopyLevels(levels,loaded);g_scenario=loaded_meta;
       status="Another chart updated: Reload before applying";
       StatusLine(); RenderLevels(); return;
    }
-   CopyLevels(levels,loaded); CopyLevels(draft,loaded); g_revision=next;
+   CopyLevels(levels,loaded);g_scenario=loaded_meta; CopyLevels(draft,loaded);draft_scenario=loaded_meta; g_revision=next;
+   recovery_cached=false;if(discard)FileDelete(DataFile(_Symbol)+".draft");
    status=""; editing=false; palette_row=-1;
    if(expanded>=ArraySize(draft)) expanded=-1;
    BuildPanel(); RenderLevels();
 }
-void AddField()
+void AddField(const string kind="Custom")
 {
    if(ArraySize(draft)>=LZ_MAX) { status="Maximum of 128 fields reached"; StatusLine(); return; }
    int n=ArraySize(draft),key=LZ_BASE;
@@ -120,24 +122,111 @@ void AddField()
    draft[n].key=key+1; draft[n].name="Level "+IntegerToString(n-LZ_BASE+1);
    draft[n].from=""; draft[n].to=""; draft[n].stroke=C'255,218,26'; draft[n].fill=draft[n].stroke;
    draft[n].width=1; draft[n].transparency=80; draft[n].visible=true; draft[n].locked=true;
-   draft[n].custom=true; draft[n].dashed=false; first_row=n; expanded=-1;
+   draft[n].custom=true; draft[n].dashed=false;InitFieldMeta(draft[n]);
+   draft[n].name=kind+" "+IntegerToString(n+1);draft[n].timeframe=draft_scenario.trigger_tf;
+   draft[n].value_type=kind=="Zone"?"ZONE":"LEVEL";
+   if(kind=="Support") {draft[n].semantic_type="SUPPORT";draft[n].stroke=C'43,205,95';}
+   if(kind=="Resistance") {draft[n].semantic_type="RESISTANCE";draft[n].stroke=C'255,67,74';}
+   if(kind=="TP")
+   {
+      draft[n].semantic_type="TP";draft[n].stroke=C'43,205,95';draft[n].target_index=1;
+      for(int j=0;j<n;j++)if(draft[j].semantic_type=="TP")draft[n].target_index=MathMax(draft[n].target_index,draft[j].target_index+1);
+      draft[n].name="TP "+IntegerToString(draft[n].target_index);
+   }
+   draft[n].fill=draft[n].stroke;first_row=n;expanded=n;
+   status="Set Name, Type and TF, then Apply";
 }
 void DeleteField(const int index)
 {
-   if(index<LZ_BASE || index>=ArraySize(draft)) return;
+   if(index<0 || index>=ArraySize(draft)) return;
    int n=ArraySize(draft);
    for(int i=index;i<n-1;i++) draft[i]=draft[i+1];
    ArrayResize(draft,n-1); expanded=-1;
+}
+void SaveDraftIfChanged()
+{
+   if(!Dirty())
+   {
+      // Reverting an edit must also discard its obsolete recovery draft.
+      if(recovery_cached)
+      {
+         Level saved[];ScenarioState saved_meta;long base=0;
+         if(ReadScenarioFile(DataFile(_Symbol)+".draft",_Symbol,_Digits,saved,saved_meta,base,false) &&
+            base==g_revision && SameLevels(saved,recovery_levels) && SameScenario(saved_meta,recovery_scenario))FileDelete(DataFile(_Symbol)+".draft");
+         recovery_cached=false;
+      }
+      return;
+   }
+   if(recovery_cached&&SameLevels(draft,recovery_levels)&&SameScenario(draft_scenario,recovery_scenario))return;
+   if(!SaveRecovery(draft,draft_scenario,g_revision)){status="Could not autosave draft; use Apply";StatusLine();return;}
+   CopyLevels(recovery_levels,draft);recovery_scenario=draft_scenario;recovery_cached=true;
+}
+void AskConfirmation(const string action,const string text)
+{confirm_action=action;confirm_text=text;BuildPanel();}
+void ConfirmAction()
+{
+   string action=confirm_action;confirm_action="";
+   if(action=="CLEAR"){ClearAllPrices();return;}
+   if(action=="MODE")
+   {
+      string mode=draft_scenario.mode=="SETUP"?"OPEN_POSITION":"SETUP";
+      DefaultScenario(draft_scenario,_Symbol);draft_scenario.mode=mode;
+      draft_scenario.direction=mode=="OPEN_POSITION"?"LONG":"WAIT";
+      ModeDefaults(draft,mode);first_row=0;expanded=-1;activation_first=0;
+   }
+   else if(action=="BIND")draft_scenario.snapshot_id=draft_scenario.latest_snapshot_id;
+   else if(action=="IMPORT")
+   {
+      CopyLevels(draft,pending_import);draft_scenario=pending_scenario;first_row=0;expanded=-1;activation_first=0;details_open=false;
+      status="Imported into draft; review, then Apply";
+   }
+   else if(StringFind(action,"DEL_")==0)DeleteField((int)StringToInteger(StringSubstr(action,4)));
+   SaveDraftIfChanged();BuildPanel();
+}
+void SelectMenu(const string value)
+{
+   string target=menu_target;menu_target="";
+   if(target=="DIRECTION")draft_scenario.direction=value;
+   else if(target=="OVERALL")draft_scenario.overall_status=value;
+   else if(target=="DECISION")draft_scenario.decision=value;
+   else if(target=="ADD")AddField(value);
+   else
+   {
+      int i=ControlIndex(UI(target),"STATE");if(i>=0)draft[i].state=value;
+      else if((i=ControlIndex(UI(target),"TYPE"))>=0)
+      {
+         if(value=="LEVEL"&&!EmptyPrice(draft[i].to)){status="Clear To before converting a zone to a level";}
+         else draft[i].value_type=value;
+      }
+      else if((i=ControlIndex(UI(target),"OPACITY"))>=0)draft[i].transparency=100-(int)StringToInteger(value);
+      else if((i=ControlIndex(UI(target),"TARGET"))>=0)draft[i].target_index=(int)StringToInteger(value);
+      else if((i=ControlIndex(UI(target),"BORDER"))>=0)draft[i].border_opacity=(int)StringToInteger(value);
+   }
+   SaveDraftIfChanged();BuildPanel();
 }
 void SetPaletteColor(const color c)
 {
    if(palette_row<0 || palette_row>=ArraySize(draft)) return;
    if(palette_fill) draft[palette_row].fill=c; else draft[palette_row].stroke=c;
-   palette_row=-1; status=""; BuildPanel();
+   palette_row=-1; status=""; SaveDraftIfChanged();BuildPanel();
 }
 void ButtonClick(const string name)
 {
    SyncInputs(); editing=false;
+   if(confirm_action!="")
+   {
+      if(name==UI("CONFIRM_YES"))ConfirmAction();
+      else if(name==UI("CONFIRM_NO")){confirm_action="";BuildPanel();}
+      return;
+   }
+   if(menu_target!="")
+   {
+      if(name==UI("MENU_CANCEL")){menu_target="";BuildPanel();return;}
+      if(name==UI("MENU_PREV")){menu_first=MathMax(0,menu_first-8);BuildPanel();return;}
+      if(name==UI("MENU_NEXT")){if(menu_first+8<ArraySize(menu_options))menu_first+=8;BuildPanel();return;}
+      for(int j=0;j<ArraySize(menu_options);j++)if(name==UI("MENU_"+IntegerToString(j))){SelectMenu(menu_options[j]);return;}
+      return;
+   }
    if(palette_row>=0)
    {
       if(name==UI("PAL_CANCEL")) { palette_row=-1; BuildPanel(); return; }
@@ -155,10 +244,23 @@ void ButtonClick(const string name)
    if(name==UI("OPEN")) panel_hidden=false;
    else if(name==UI("MIN")) panel_collapsed=!panel_collapsed;
    else if(name==UI("CLOSE")) panel_hidden=true;
-   else if(name==UI("CLEAR")) { ClearAllPrices(); return; }
+   else if(name==UI("CLEAR")) { if(HasPrices(draft)||HasPrices(levels))AskConfirmation("CLEAR","Clear every price and drawing for "+_Symbol+"?");else ClearAllPrices();return; }
    else if(name==UI("APPLY")) { CommitDraft(); return; }
    else if(name==UI("RELOAD")) { ReloadSaved(true); return; }
-   else if(name==UI("ADD")) AddField();
+   else if(name==UI("ADD")) OpenMenu("ADD","Level|Zone|Support|Resistance|TP|Custom");
+   else if(name==UI("DIRECTION")) OpenMenu("DIRECTION",draft_scenario.mode=="SETUP"?"WAIT|WAIT -> BUY|WAIT -> SELL|BUY|SELL":"LONG|SHORT");
+   else if(name==UI("OVERALL"))OpenMenu("OVERALL",LZ_STATES);
+   else if(name==UI("DECISION"))OpenMenu("DECISION","LASCIA|CHIUDI|DATI_INSUFFICIENTI");
+   else if(name==UI("MODE")){AskConfirmation("MODE","Switch mode and start with empty fields? Applied levels stay until Apply.");return;}
+   else if(name==UI("DETAILS"))details_open=!details_open;
+   else if(name==UI("ACT_UP"))activation_first=MathMax(0,activation_first-1);
+   else if(name==UI("ACT_DOWN"))activation_first=MathMin(200,activation_first+1);
+   else if(name==UI("BIND")){AskConfirmation("BIND","Attribute ALL current draft levels to the latest snapshot?");return;}
+   else if(name==UI("IMPORT"))
+   {
+      if(!ImportScenarioFile(import_path,_Symbol,_Digits,pending_scenario,pending_import,status)){StatusLine();return;}
+      AskConfirmation("IMPORT","Replace all draft fields with the validated imported scenario?");return;
+   }
    else if(name==UI("UP")) first_row=MathMax(0,first_row-1);
    else if(name==UI("DOWN")) first_row=MathMin(ArraySize(draft)-1,first_row+1);
    else
@@ -169,12 +271,21 @@ void ButtonClick(const string name)
       else if((i=ControlIndex(name,"LOCK"))>=0) draft[i].locked=!draft[i].locked;
       else if((i=ControlIndex(name,"WIDTH"))>=0) draft[i].width=draft[i].width%5+1;
       else if((i=ControlIndex(name,"STYLE"))>=0) draft[i].dashed=!draft[i].dashed;
-      else if((i=ControlIndex(name,"DEL"))>=0) DeleteField(i);
+      else if((i=ControlIndex(name,"DEL"))>=0){AskConfirmation("DEL_"+IntegerToString(i),"Delete "+draft[i].name+" from this draft?");return;}
+      else if((i=ControlIndex(name,"TYPE"))>=0)OpenMenu("TYPE_"+IntegerToString(i),"LEVEL|ZONE");
+      else if((i=ControlIndex(name,"STATE"))>=0 || (i=ControlIndex(name,"SSTATE"))>=0)OpenMenu("STATE_"+IntegerToString(i),LZ_STATES);
+      else if((i=ControlIndex(name,"LABEL"))>=0)draft[i].show_label=!draft[i].show_label;
+      else if((i=ControlIndex(name,"POSITION"))>=0)draft[i].label_position=draft[i].label_position=="LEFT"?"RIGHT":"LEFT";
+      else if((i=ControlIndex(name,"OPACITY"))>=0)OpenMenu("OPACITY_"+IntegerToString(i),"0|10|20|30|40|50|60|70|80|90|100");
+      else if((i=ControlIndex(name,"TARGET"))>=0)OpenMenu("TARGET_"+IntegerToString(i),"1|2|3|4|5|6|7|8|9|10");
+      else if((i=ControlIndex(name,"BORDER"))>=0)OpenMenu("BORDER_"+IntegerToString(i),"0|10|20|30|40|50|60|70|80|90|100");
+      else if((i=ControlIndex(name,"MOVEUP"))>=0){if(i>0){Level row=draft[i-1];draft[i-1]=draft[i];draft[i]=row;expanded=i-1;first_row=MathMin(first_row,expanded);}}
+      else if((i=ControlIndex(name,"MOVEDOWN"))>=0){if(i+1<ArraySize(draft)){Level row=draft[i+1];draft[i+1]=draft[i];draft[i]=row;expanded=i+1;first_row=expanded;}}
       else if((i=ControlIndex(name,"COLOR"))>=0 || (i=ControlIndex(name,"SCOLOR"))>=0) { palette_row=i; palette_fill=false; }
       else if((i=ControlIndex(name,"FILL"))>=0) { palette_row=i; palette_fill=true; }
       else return;
    }
-   BuildPanel(); RenderLevels(); SaveView();
+   SaveDraftIfChanged();BuildPanel(); RenderLevels(); SaveView();
 }
 void UpdateSlider(const int x)
 {
@@ -210,7 +321,7 @@ void FinishDrag()
    {
       CopyLevels(draft,levels);
       long next=g_revision; string error;
-      if(SaveLevels(_Symbol,_Digits,levels,g_revision,next,error))
+      if(SaveScenario(_Symbol,_Digits,levels,g_scenario,g_revision,next,error))
       { g_revision=next; seen_revision=next; status=""; NotifyCharts(); }
       else
       { CopyLevels(levels,drag_before); CopyLevels(draft,drag_before); status=error; }
@@ -256,16 +367,17 @@ void MouseMove(const int x,const int y,const bool down)
       left_down=down; return;
    }
    bool inside=InPanel(x,y);
+   if(menu_target!=""||confirm_action!=""){CaptureScroll(inside);left_down=down;return;}
    int mode=0,hit=inside?-1:HitLevel(x,y,mode);
    CaptureScroll(inside || hit>=0);
    if(down && !left_down)
    {
       if(inside)
       {
-         if(palette_row<0 && y<panel_y+PX(44) && x<panel_x+PX(435))
+         if(palette_row<0 && y<panel_y+PX(44) && x<panel_x+PX(PANEL_W-85))
          {
             SyncInputs(); drag_kind=10; drag_x=x; drag_y=y; origin_x=panel_x; origin_y=panel_y;
-            drag_limit_x=MathMax(0,(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS)-PX(520));
+            drag_limit_x=MathMax(0,(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS)-PX(PANEL_W));
             drag_limit_y=MathMax(0,(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0)-panel_h);
             last_panel_frame=0;
          }
@@ -306,9 +418,15 @@ int OnInit()
    old_foreground=(bool)ChartGetInteger(0,CHART_FOREGROUND);
    ChartSetInteger(0,CHART_FOREGROUND,false);
    ChartSetInteger(0,CHART_EVENT_MOUSE_MOVE,true);
-   if(!LoadLevels(_Symbol,_Digits,levels,g_revision,status)) { DefaultLevels(levels); g_revision=0; }
-   seen_revision=g_revision; CopyLevels(draft,levels);
-   panel_x=MathMax(0,(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS)-PX(532)); panel_y=PX(12); LoadView();
+   if(!LoadScenario(_Symbol,_Digits,levels,g_scenario,g_revision,status)) { DefaultLevels(levels);DefaultScenario(g_scenario,_Symbol);g_revision=0; }
+   seen_revision=g_revision; CopyLevels(draft,levels);draft_scenario=g_scenario;
+   Level recovered[];ScenarioState recovered_meta;long base=0;
+   if(ReadScenarioFile(DataFile(_Symbol)+".draft",_Symbol,_Digits,recovered,recovered_meta,base,false))
+   {
+      if(base==g_revision){CopyLevels(draft,recovered);draft_scenario=recovered_meta;status="Recovered draft; review, then Apply";}
+      else status="Older draft kept on disk; applied scenario loaded";
+   }
+   panel_x=MathMax(0,(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS)-PX(PANEL_W+12)); panel_y=PX(12); LoadView();
    // Canvas first so UI objects remain in front even after a chart refresh.
    RenderLevels(); BuildPanel(); RenderLevels();
    if(!EventSetMillisecondTimer(250)) { status="Timer unavailable"; StatusLine(); return INIT_FAILED; }
@@ -317,7 +435,7 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    if(!initialized) return;
-   EventKillTimer(); SaveView(); CaptureScroll(false);
+   SyncInputs();SaveDraftIfChanged();EventKillTimer(); SaveView(); CaptureScroll(false);
    ChartSetInteger(0,CHART_EVENT_MOUSE_MOVE,old_mouse_move);
    ChartSetInteger(0,CHART_FOREGROUND,old_foreground);
    DestroyDrawing(); ObjectsDeleteAll(0,"LZ_UI_"); ObjectDelete(0,"LZ_INSTANCE"); ChartRedraw();
@@ -326,7 +444,7 @@ void OnDeinit(const int reason)
 void OnTimer()
 {
    if(!initialized || drag_kind!=0) return;
-   if(++timer_count%4==0) ReloadSaved(false);
+   if(++timer_count%4==0) { if(!editing){SyncInputs();SaveDraftIfChanged();} ReloadSaved(false); }
    int w=(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS)-72,h=(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0);
    double lo=ChartGetDouble(0,CHART_PRICE_MIN,0),hi=ChartGetDouble(0,CHART_PRICE_MAX,0);
    if(w!=plot_w || h!=plot_h || lo!=view_min || hi!=view_max) RenderLevels();
@@ -339,13 +457,13 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    {
       if(StringFind(sparam,"LZ_UI_")!=0) return;
       ObjectSetInteger(0,sparam,OBJPROP_STATE,false);
-      if(ControlIndex(sparam,"NAME")>=0 || ControlIndex(sparam,"FROM")>=0 || ControlIndex(sparam,"TO")>=0 || sparam==UI("PAL_HEX"))
+      if((ENUM_OBJECT)ObjectGetInteger(0,sparam,OBJPROP_TYPE)==OBJ_EDIT)
       { editing=true; return; }
       if(StringFind(sparam,"LZ_UI_")==0) ButtonClick(sparam);
       return;
    }
    if(id==CHARTEVENT_OBJECT_ENDEDIT && StringFind(sparam,"LZ_UI_")==0)
-   { SyncInputs(); editing=false; status=""; StatusLine(); return; }
+   { SyncInputs(); editing=false; status="";SaveDraftIfChanged();StatusLine(); return; }
    if(id==CHARTEVENT_CHART_CHANGE)
    {
       if(drag_kind!=0) return;

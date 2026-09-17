@@ -1,0 +1,32 @@
+PASS Core price/store regression suite
+PASS 1 WAIT SELL applies only five defined fields; Entry and SL stay empty
+PASS 1 Retest and Resistance rendered as zones
+PASS 1 Overall status, timeframe and state labels visible | WAITING_BREAKOUT | min=1.14500 max=1.14900
+PASS 1 Retest band has visible fill pixels
+PASS 2 State change keeps the breakout price
+PASS 2 Chart label and row badge change
+PASS 3 Mode replacement requires confirmation
+PASS 3 Current SL remains empty; management SL is separate
+PASS 3 Current and proposed TP, direction and manual decision distinct
+PASS 4 New snapshot leaves A prices explicitly OLD SNAPSHOT
+PASS 4 Full B import contains no A-only prices | 
+PASS 4 Applying B replaces the previous scenario without carrying Entry or SL
+PASS 5 Reversed zone rejected atomically; saved and drawn prices unchanged
+PASS 6 Load last scenario restores applied data
+PASS 6 Clear waits for confirmation
+PASS 6 Cancel clear preserves prices
+PASS 6 Confirm clear removes plugin levels only
+PASS Draft autosave preserves unapplied metadata with base revision
+PASS Reverting an edit removes its obsolete recovery draft
+PASS Unlocked chart line can be selected for dragging
+PASS Visibility hides drawing without deleting price
+PASS Type change cannot silently delete a zone endpoint
+PASS Import rejects another pair
+PASS Import rejects duplicate keys
+PASS Import rejects text instead of boolean
+PASS Complete SELL order of levels accepted
+PASS Inconsistent complete BUY rejected
+PASS Legacy v1 store migrates prices, zones and TP roles
+PASS Migrated scenario writes the new atomic format
+PASS UTF-8 JSON file import validates the full replacement
+RESULT 31 passed, 0 failed

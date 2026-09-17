@@ -1,0 +1,6 @@
+PASS Installed production indicator loads saved scenario
+PASS Production panel survives template reapplication
+PASS Production panel survives timeframe change
+PASS Production panel returns to original timeframe
+PASS One production instance remains attached
+RESULT 5 passed, 0 failed

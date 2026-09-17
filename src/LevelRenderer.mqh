@@ -24,7 +24,7 @@ double YPrice(int y)
 bool ActiveLevel(const int i) { return i>=0 && i<ArraySize(levels) && levels[i].visible && !EmptyPrice(levels[i].from); }
 string LevelDetail(const int i)
 {
-   return levels[i].name+"  "+levels[i].from+(EmptyPrice(levels[i].to)?"":" - "+levels[i].to);
+   return (StaleScenario(g_scenario)?"OLD SNAPSHOT | ":"")+levels[i].name+" "+levels[i].timeframe+"  "+levels[i].from+(EmptyPrice(levels[i].to)?"":" - "+levels[i].to)+"  ["+levels[i].state+"]";
 }
 // Straight-alpha source-over composition for overlapping highlighted bands.
 uint Blend(const uint dst,const color source,const int transparency)
@@ -41,14 +41,14 @@ void Stroke(const int y,const Level &r)
 {
    if(y<0 || y>=plot_h) return;
    int top=y-r.width/2,bottom=top+r.width-1;
-   if(!r.dashed) drawing.FillRectangle(0,top,plot_w-1,bottom,ColorToARGB(r.stroke));
-   else for(int x=0;x<plot_w;x+=18) drawing.FillRectangle(x,top,MathMin(plot_w-1,x+10),bottom,ColorToARGB(r.stroke));
+   if(!r.dashed) drawing.FillRectangle(0,top,plot_w-1,bottom,ColorToARGB(r.stroke,(uchar)MathRound(255.0*r.border_opacity/100)));
+   else for(int x=0;x<plot_w;x+=18) drawing.FillRectangle(x,top,MathMin(plot_w-1,x+10),bottom,ColorToARGB(r.stroke,(uchar)MathRound(255.0*r.border_opacity/100)));
 }
 int HandleX()
 {
    int x=plot_w/2;
-   if(!panel_hidden && !panel_collapsed && x>=panel_x && x<=panel_x+PX(520))
-      x=panel_x>PX(150) ? panel_x/2 : (panel_x+PX(520)+plot_w)/2;
+   if(!panel_hidden && !panel_collapsed && x>=panel_x && x<=panel_x+PX(PANEL_W))
+      x=panel_x>PX(150) ? panel_x/2 : (panel_x+PX(PANEL_W)+plot_w)/2;
    return IClamp(x,30,MathMax(30,plot_w-30));
 }
 void SmallHandle(const int x,const int y,const color c,const bool whole)
@@ -63,14 +63,23 @@ void SmallHandle(const int x,const int y,const color c,const bool whole)
       drawing.LineHorizontal(x-4,x+4,y+2,ColorToARGB(c));
    }
 }
-void ChartTag(const string suffix,const string text,const string tooltip,const int y,const color clr,const bool compact)
+void ChartTag(const string suffix,const string text,const string tooltip,const int y,const color clr,const bool compact,const bool right=false)
 {
-   string name="LZ_TAG_"+suffix;
-   int x=DP(8),w=DP(compact?78:(int)MathMin(330,16+StringLen(text)*7)),h=DP(22);
-   if(!panel_hidden && !panel_collapsed && panel_x<x+w && panel_x+PX(520)>x && y+h>panel_y && y<panel_y+panel_h)
+   string name="LZ_TAG_"+suffix,caption=text;
+   int w=DP(compact?78:(int)MathMin(470,16+StringLen(text)*6)),h=DP(22);
+   int x=right?MathMax(DP(8),plot_w-w-DP(8)):DP(8);
+   if(!panel_hidden && !panel_collapsed && panel_x<x+w && panel_x+PX(PANEL_W)>x && y+h>panel_y && y<panel_y+panel_h)
    {
-      x=panel_x+PX(520)+DP(8);
-      if(x+w>plot_w) return;
+      x=panel_x+PX(PANEL_W)+DP(8);
+      if(x+w>plot_w)
+      {
+         int left_space=panel_x-DP(16),right_space=plot_w-panel_x-PX(PANEL_W)-DP(16);
+         bool use_right=right_space>left_space;
+         x=use_right?panel_x+PX(PANEL_W)+DP(8):DP(8);
+         w=MathMin(w,MathMax(left_space,right_space));
+         if(w<DP(65))return;
+         caption="Details (hover)";
+      }
    }
    ObjectCreate(0,name,OBJ_BUTTON,0,0,0);
    ObjectSetInteger(0,name,OBJPROP_CORNER,CORNER_LEFT_UPPER);
@@ -78,7 +87,7 @@ void ChartTag(const string suffix,const string text,const string tooltip,const i
    ObjectSetInteger(0,name,OBJPROP_XSIZE,w); ObjectSetInteger(0,name,OBJPROP_YSIZE,h);
    ObjectSetInteger(0,name,OBJPROP_BGCOLOR,C'15,22,29'); ObjectSetInteger(0,name,OBJPROP_COLOR,clr);
    ObjectSetInteger(0,name,OBJPROP_BORDER_COLOR,clr); ObjectSetInteger(0,name,OBJPROP_FONTSIZE,8);
-   ObjectSetString(0,name,OBJPROP_FONT,"Arial"); ObjectSetString(0,name,OBJPROP_TEXT,text);
+   ObjectSetString(0,name,OBJPROP_FONT,"Arial"); ObjectSetString(0,name,OBJPROP_TEXT,caption);
    ObjectSetString(0,name,OBJPROP_TOOLTIP,tooltip);
    ObjectSetInteger(0,name,OBJPROP_SELECTABLE,false); ObjectSetInteger(0,name,OBJPROP_HIDDEN,true);
    ObjectSetInteger(0,name,OBJPROP_ZORDER,5); ObjectSetInteger(0,name,OBJPROP_BACK,false);
@@ -87,7 +96,7 @@ void DrawTags()
 {
    ObjectsDeleteAll(0,"LZ_TAG_");
    int indexes[],ys[],n=0;
-   for(int i=0;i<ArraySize(levels);i++) if(ActiveLevel(i))
+   for(int i=0;i<ArraySize(levels);i++) if(ActiveLevel(i) && levels[i].show_label)
    {
       double p=StringToDouble(levels[i].from);
       if(!EmptyPrice(levels[i].to)) p=(p+StringToDouble(levels[i].to))/2;
@@ -105,7 +114,7 @@ void DrawTags()
    for(int i=0;i<n;)
    {
       int end=i+1;
-      while(end<n && ys[end]-ys[end-1]<DP(24)) end++;
+      while(end<n && ys[end]-ys[end-1]<DP(24) && levels[indexes[end]].label_position==levels[indexes[i]].label_position) end++;
       int count=end-i;
       // Nearby labels use a compact group with a complete native hover tooltip.
       if(count>1)
@@ -113,13 +122,13 @@ void DrawTags()
          string tip="";
          for(int j=i;j<end;j++) tip+=(j>i?"\n":"")+LevelDetail(indexes[j]);
          int y=IClamp(MathMax(last+DP(24),ys[i]),DP(4),plot_h-DP(26));
-         ChartTag(IntegerToString(i),IntegerToString(count)+" levels",tip,y,levels[indexes[i]].stroke,true);
+         ChartTag(IntegerToString(i),IntegerToString(count)+" levels",tip,y,levels[indexes[i]].stroke,true,levels[indexes[i]].label_position=="RIGHT");
          last=y;
       }
       else
       {
          int y=IClamp(MathMax(last+DP(24),ys[i]),DP(4),plot_h-DP(26));
-         ChartTag(IntegerToString(i),LevelDetail(indexes[i]),LevelDetail(indexes[i]),y,levels[indexes[i]].stroke,false);
+         ChartTag(IntegerToString(i),LevelDetail(indexes[i]),LevelDetail(indexes[i]),y,levels[indexes[i]].stroke,false,levels[indexes[i]].label_position=="RIGHT");
          last=y;
       }
       i=end;

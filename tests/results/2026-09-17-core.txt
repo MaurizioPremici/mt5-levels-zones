@@ -1,0 +1,25 @@
+PASS Nine defaults including SL
+PASS No demo price on startup
+PASS Pasted price with whitespace
+PASS JPY and decimal comma
+PASS Reject mixed separators
+PASS Reject partial numeric conversion
+PASS Reject excess precision
+PASS Reject nonpositive prices
+PASS Reject exponents and incomplete decimal
+PASS Reject reversed range
+PASS Reject missing first endpoint
+PASS Allow equal zone endpoints
+PASS Exact RGB/BGR conversion
+PASS Reject invalid HEX
+PASS Exact distinct symbol keys
+PASS First durable save
+PASS Round trip names, prices, colors and style
+PASS Other pair remains empty
+PASS Second save increments revision
+PASS Reject stale write from another chart
+PASS Stale draft cannot overwrite current value
+PASS Previous complete revision retained as backup
+PASS Detect corrupt state
+PASS Do not overwrite corrupt state with defaults
+RESULT 24 passed, 0 failed
