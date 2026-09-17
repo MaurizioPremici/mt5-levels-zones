@@ -1,69 +1,70 @@
-# Livelli e zone — MetaTrader 5
+# MT5 Levels and Zones
 
-Pannello grafico in italiano per inserire manualmente prezzi e intervalli, disegnando linee orizzontali e zone trasparenti. Pensato per MT5 desktop, incluso MT5 su Mac tramite Wine.
+A chart panel for drawing horizontal lines and price zones in MetaTrader 5. Enter a price, give it a name, and choose how it looks. Built for manual chart marking, with an Italian interface.
 
-![Riferimento grafico fornito dall'utente](docs/gui-reference.png)
+It draws only. It does not place orders, read positions, or generate trading signals.
 
-**L'immagine è il riferimento di progetto, non una schermata del programma in esecuzione.** I prezzi raffigurati sono dimostrativi. Il pannello effettivo usa controlli nativi di MT5 e parte con tutti i prezzi vuoti.
+![Original design reference](docs/gui-reference.png)
 
-## Funzioni
+*This image is the original design reference. The working panel uses native MT5 controls and starts with empty price fields.*
 
-- Entry Price, Breakout Price, Retest Price, Rejection Price, Support, Resistance, SL, TP 1 e TP 2.
-- Campi personalizzati, nomi modificabili, visibilità e blocco dello spostamento.
-- Una sola quotazione: linea. Due estremi: zona; gli estremi invertiti vengono ordinati.
-- Colori indipendenti per linea/bordo e riempimento, palette e codici HEX.
-- Spessore 1–5 pixel, stile continuo o tratteggiato anche con spessori maggiori di uno.
-- Trasparenza 0–100%: 0% opaco, 100% invisibile. Valore iniziale 80%.
-- Zone estese all'intera area del grafico, anche scorrendo sulle candele passate.
-- Etichette a sinistra. I livelli troppo vicini sono raggruppati; il tooltip mostra tutti i dettagli.
-- Trascinamento della linea, dei bordi e della maniglia centrale della zona; ESC annulla.
-- Salvataggio locale dopo Applica e dopo il rilascio del trascinamento; ripristino al riavvio.
-- Sincronizzazione tra grafici dello stesso simbolo **nel medesimo terminale**, con l'indicatore caricato su ciascuno. Cambiare timeframe mantiene i valori. Simboli diversi, inclusi suffissi diversi del broker, sono separati.
-- Revisione condivisa per impedire a una bozza vecchia di sovrascrivere una modifica applicata da un altro grafico.
+## What it does
 
-Non contiene invio/modifica/chiusura di ordini, lettura di posizioni o segnali. Il timer aggiorna esclusivamente il disegno rispetto alla scala del grafico e controlla lo stato grafico salvato.
+- Includes Entry Price, Breakout Price, Retest Price, Rejection Price, Support, Resistance, SL, TP 1, and TP 2.
+- Lets you rename fields and add your own.
+- Draws a horizontal line for one price, or a filled zone for two prices.
+- Offers line and fill colors, HEX input, solid or dashed lines, thickness, and transparency.
+- Extends zones across the chart, including older candles.
+- Shows names and prices on the left. Nearby labels are grouped, with details available on hover.
+- Supports dragging lines, zone edges, or the whole zone. A lock prevents accidental moves.
+- Saves when you click Apply or finish a drag.
+- Keeps levels when you change timeframe. Charts with the same exact symbol share saved levels when the indicator is attached to each chart in the same terminal. Different symbols stay separate.
 
-## Installazione
+## Install
 
-1. In MT5: **File → Apri cartella dati**.
-2. Copia la cartella `src` con i sorgenti nella cartella `MQL5/Indicators/LevelsZones` (senza un ulteriore livello `src`).
-3. Apri `LevelsZones.mq5` in MetaEditor e compila con **F7**. Usa le librerie standard già incluse in MT5.
-4. In MT5, aggiorna il Navigatore e aggiungi **LevelsZones / LevelsZones** a un grafico. Ripeti sui grafici della stessa coppia che vuoi sincronizzare.
-5. Se necessario regola l'input **PanelScale**, da 0.75 a 1.75, per il display.
+Download the ZIP from [Releases](https://github.com/MaurizioPremici/mt5-levels-zones/releases), then copy its `MQL5/Indicators/LevelsZones` folder into your MT5 data folder. You can find that folder from **File → Open Data Folder** in MT5.
 
-Su Mac con l'installazione Wine standard, gli script `build/compile.py` e `build/install.py` automatizzano compilazione e copia. `install.py --data-dir <cartella>` permette di specificare un'altra cartella dati. Non modificano profili esistenti o altri indicatori.
+Refresh the Navigator, then add **Indicators → LevelsZones → LevelsZones** to your chart. Add it to each chart you want to use.
 
-## Uso
+To build from source, copy the files in `src` into `MQL5/Indicators/LevelsZones`, open `LevelsZones.mq5` in MetaEditor, and press **F7**. The indicator uses the standard libraries included with MT5.
 
-Incolla il prezzo in **Prezzo / Da**. Lascia **A** vuoto per una linea, oppure inserisci il secondo estremo per una zona. Il separatore decimale può essere punto o virgola, senza separatori delle migliaia. Decimali eccedenti quelli del simbolo, testo aggiuntivo e range di ampiezza zero vengono rifiutati.
+For the standard MT5 Wine installation on macOS:
 
-Premi **Applica** per disegnare, salvare e sincronizzare tutti i campi. Le modifiche nei campi sono una bozza fino a quel momento. Per svuotare un livello cancella entrambi i prezzi e applica; i campi personalizzati possono anche essere eliminati.
+```sh
+python3 build/compile.py
+python3 build/install.py
+```
 
-**ON/OFF** controlla la visibilità. **L/U** significa bloccato/sbloccato; i tooltip esplicitano l'azione. Scegli **U** e applica per trascinare. Questi pulsanti testuali evitano dipendenze da font di icone non sempre disponibili sotto Wine.
+You can pass a different MT5 data folder with `python3 build/install.py --data-dir PATH`.
 
-**...** espande le impostazioni. La palette include un campo HEX per qualsiasi colore RGB. I pulsanti **Su/Giu** permettono di raggiungere le righe fuori dal pannello. Il simbolo **x** nasconde il pannello lasciando visibili i disegni; il pulsante **Livelli e zone** lo riapre.
+## Use
 
-Per una zona usa la maniglia centrale per traslarla mantenendone l'ampiezza, oppure i bordi per regolarne gli estremi. Un trascinamento viene salvato al rilascio. Prima di trascinare applica o scarta eventuali bozze.
+Enter a price in **Prezzo / Da**. Leave **A** empty for a line, or enter the other end of the range for a zone. Click **Applica** to draw and save. Changes in the panel remain a draft until you apply them.
 
-Se un altro grafico salva mentre stai modificando i campi, il pannello segnala il conflitto. **Ricarica** scarta la bozza e recupera l'ultima versione salvata; il programma non sovrascrive silenziosamente la versione più recente.
+Under Wine, double-click a price field to edit it. Check the full value after pasting. Use a decimal point or comma, without thousands separators. Invalid text and prices with too many decimal places are rejected.
 
-## Dati e limiti
+- **...** opens appearance settings.
+- **ON/OFF** shows or hides a level.
+- **L/U** locks or unlocks movement. Apply the change before dragging.
+- **+ Aggiungi campo** adds a custom field.
+- **Su/Giu** scrolls through the rows.
+- **Ricarica** discards the draft and loads the last saved values.
+- **x** hides the panel while keeping the drawings visible.
 
-I dati sono conservati in `MQL5/Files/LevelsZones`. Il file `.bak` contiene la precedente versione completa. Un file danneggiato viene segnalato e conservato, non sovrascritto con valori vuoti. Posizione e stato del pannello vengono salvati separatamente per grafico.
+For a zone, drag either edge to resize it or the middle handle to move the whole range. Press Escape to cancel a drag. Apply or discard any draft before moving a drawing.
 
-Sono supportati fino a 128 campi per simbolo. Per il pannello a scala 1 serve uno spazio di circa 520 pixel in larghezza. Gli elementi esterni creati da altri indicatori non sono gestiti da questo programma: non è garantita l'assenza di sovrapposizioni con qualsiasi oggetto di terzi.
+Transparency runs from 0% (opaque) to 100% (invisible). The default is 80%. `PanelScale` adjusts the panel size; display DPI is handled separately for Retina screens.
 
-I disegni appartengono all'indicatore e vengono rimossi dal grafico quando lo si rimuove. I livelli salvati restano disponibili per il successivo caricamento.
+## Saved data
 
-## Sorgenti e verifiche
+Levels are stored locally in `MQL5/Files/LevelsZones`. A `.bak` file keeps the previous saved version. If two charts edit the same symbol, an older draft cannot overwrite a newer save without reloading first.
 
-- `src/LevelsZones.mq5`: ciclo di vita, eventi, applicazione, sincronizzazione e trascinamento.
-- `src/LevelPanel.mqh`: interfaccia nativa.
-- `src/LevelRenderer.mqh`: disegno Canvas, trasparenza, tratteggio e hit testing.
-- `src/LevelModel.mqh`: modello e validazione dei prezzi.
-- `src/LevelStore.mqh`: archiviazione, controllo delle revisioni e backup.
-- `tests/LevelTests.mq5`: verifiche MQL5 sulla validazione e sull'archiviazione, con file di prova dedicati.
-- `reference/LevelsZonesPanel_UI.mq5`: codice GUI originale fornito dall'utente.
-- `docs/gui-reference.png`: immagine di riferimento fornita dall'utente.
+Removing the indicator removes its drawings from that chart. Saved levels remain available when you add it again. The indicator supports up to 128 fields per symbol. It does not manage labels or objects created by other indicators.
 
-Lo stato effettivo delle verifiche viene riportato in `docs/VALIDATION.md`. La sola compilazione non costituisce un collaudo interattivo.
+## Current status
+
+Compiled with **0 errors and 0 warnings**. Basic line drawing, zone drawing, and saved values across H4/H1 changes were checked in MT5 on macOS through Wine. Panel and label sizing were adjusted for Retina displays.
+
+This is an initial release. Full manual testing is still in progress, including clipboard editing under Wine, dragging, and synchronization between separate charts. See [validation notes](docs/VALIDATION.md) for the checks completed so far.
+
+The original GUI code is kept in `reference`, and the supplied design image is in `docs/gui-reference.png`.

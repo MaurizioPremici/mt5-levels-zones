@@ -14,8 +14,9 @@ long g_revision=0,seen_revision=0;
 string status="";
 int panel_x=20,panel_y=12,panel_h=0,first_row=0,expanded=-1;
 bool panel_hidden=false,panel_collapsed=false,initialized=false;
-double scale=1;
+double scale=1, font_scale=1;
 int PX(const int n) { return (int)MathRound(n*scale); }
+int DP(const int n) { return (int)MathRound(n*scale/font_scale); }
 #include "LevelRenderer.mqh"
 #include "LevelPanel.mqh"
 bool old_mouse_move=false,old_scroll=true,old_foreground=false,scroll_captured=false;
@@ -259,7 +260,8 @@ int OnInit()
    if(ObjectFind(0,"LZ_INSTANCE")>=0) { Print("Livelli e zone: indicatore gia presente su questo grafico."); return INIT_FAILED; }
    ObjectCreate(0,"LZ_INSTANCE",OBJ_LABEL,0,0,0);
    ObjectSetString(0,"LZ_INSTANCE",OBJPROP_TEXT,""); ObjectSetInteger(0,"LZ_INSTANCE",OBJPROP_HIDDEN,true);
-   initialized=true; scale=MathMax(0.75,MathMin(1.75,PanelScale));
+   initialized=true; font_scale=MathMax(0.75,MathMin(1.75,PanelScale));
+   scale=font_scale*MathMax(1.0,(double)TerminalInfoInteger(TERMINAL_SCREEN_DPI)/96.0);
    IndicatorSetString(INDICATOR_SHORTNAME,"Livelli e zone");
    old_mouse_move=(bool)ChartGetInteger(0,CHART_EVENT_MOUSE_MOVE);
    old_scroll=(bool)ChartGetInteger(0,CHART_MOUSE_SCROLL);

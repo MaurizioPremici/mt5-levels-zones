@@ -66,10 +66,10 @@ void SmallHandle(const int x,const int y,const color c,const bool whole)
 void ChartTag(const string suffix,const string text,const string tooltip,const int y,const color clr,const bool compact)
 {
    string name="LZ_TAG_"+suffix;
-   int x=8,w=compact?78:(int)MathMin(330,16+StringLen(text)*7),h=22;
+   int x=DP(8),w=DP(compact?78:(int)MathMin(330,16+StringLen(text)*7)),h=DP(22);
    if(!panel_hidden && !panel_collapsed && panel_x<x+w && panel_x+PX(520)>x && y+h>panel_y && y<panel_y+panel_h)
    {
-      x=panel_x+PX(520)+8;
+      x=panel_x+PX(520)+DP(8);
       if(x+w>plot_w) return;
    }
    ObjectCreate(0,name,OBJ_BUTTON,0,0,0);
@@ -93,7 +93,7 @@ void DrawTags()
       if(!EmptyPrice(levels[i].to)) p=(p+StringToDouble(levels[i].to))/2;
       int y=PriceY(p);
       if(y<0 || y>=plot_h) continue;
-      ArrayResize(indexes,n+1); ArrayResize(ys,n+1); indexes[n]=i; ys[n]=IClamp(y-11,4,plot_h-26); n++;
+      ArrayResize(indexes,n+1); ArrayResize(ys,n+1); indexes[n]=i; ys[n]=IClamp(y-DP(11),DP(4),plot_h-DP(26)); n++;
    }
    for(int i=1;i<n;i++)
    {
@@ -101,24 +101,24 @@ void DrawTags()
       while(j>=0 && ys[j]>y) { ys[j+1]=ys[j]; indexes[j+1]=indexes[j]; j--; }
       ys[j+1]=y; indexes[j+1]=k;
    }
-   int last=-24;
+   int last=-DP(24);
    for(int i=0;i<n;)
    {
       int end=i+1;
-      while(end<n && ys[end]-ys[end-1]<24) end++;
+      while(end<n && ys[end]-ys[end-1]<DP(24)) end++;
       int count=end-i;
       // Nearby labels use a compact group with a complete native hover tooltip.
       if(count>1)
       {
          string tip="";
          for(int j=i;j<end;j++) tip+=(j>i?"\n":"")+LevelDetail(indexes[j]);
-         int y=IClamp(MathMax(last+24,ys[i]),4,plot_h-26);
+         int y=IClamp(MathMax(last+DP(24),ys[i]),DP(4),plot_h-DP(26));
          ChartTag(IntegerToString(i),IntegerToString(count)+" livelli",tip,y,levels[indexes[i]].stroke,true);
          last=y;
       }
       else
       {
-         int y=IClamp(MathMax(last+24,ys[i]),4,plot_h-26);
+         int y=IClamp(MathMax(last+DP(24),ys[i]),DP(4),plot_h-DP(26));
          ChartTag(IntegerToString(i),LevelDetail(indexes[i]),LevelDetail(indexes[i]),y,levels[indexes[i]].stroke,false);
          last=y;
       }

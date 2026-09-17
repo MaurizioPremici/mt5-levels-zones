@@ -26,7 +26,7 @@ void Txt(const string name,const string text,const int x,const int y,const int f
    string id=UI(name); ObjectCreate(0,id,OBJ_LABEL,0,0,0); Place(id,x,y,0,0,110);
    ObjectSetInteger(0,id,OBJPROP_ANCHOR,ANCHOR_LEFT_UPPER);
    ObjectSetInteger(0,id,OBJPROP_COLOR,clr==clrNONE?C_TEXT:clr);
-   ObjectSetInteger(0,id,OBJPROP_FONTSIZE,MathMax(7,PX(font)));
+   ObjectSetInteger(0,id,OBJPROP_FONTSIZE,MathMax(7,(int)MathRound(font*font_scale)));
    ObjectSetString(0,id,OBJPROP_FONT,"Arial"); ObjectSetString(0,id,OBJPROP_TEXT,text);
    ObjectSetString(0,id,OBJPROP_TOOLTIP,"\n");
 }
@@ -34,7 +34,7 @@ void Btn(const string name,const string text,const int x,const int y,const int w
 {
    string id=UI(name); ObjectCreate(0,id,OBJ_BUTTON,0,0,0); Place(id,x,y,w,h,z);
    ObjectSetInteger(0,id,OBJPROP_BGCOLOR,bg); ObjectSetInteger(0,id,OBJPROP_COLOR,fg);
-   ObjectSetInteger(0,id,OBJPROP_BORDER_COLOR,C_BORDER); ObjectSetInteger(0,id,OBJPROP_FONTSIZE,MathMax(7,PX(9)));
+   ObjectSetInteger(0,id,OBJPROP_BORDER_COLOR,C_BORDER); ObjectSetInteger(0,id,OBJPROP_FONTSIZE,MathMax(7,(int)MathRound(9*font_scale)));
    ObjectSetInteger(0,id,OBJPROP_STATE,false); ObjectSetString(0,id,OBJPROP_FONT,"Arial");
    ObjectSetString(0,id,OBJPROP_TEXT,text); ObjectSetString(0,id,OBJPROP_TOOLTIP,tip==""?text:tip);
 }
@@ -42,7 +42,7 @@ void Input(const string name,const string value,const int x,const int y,const in
 {
    string id=UI(name); ObjectCreate(0,id,OBJ_EDIT,0,0,0); Place(id,x,y,w,PX(26),z);
    ObjectSetString(0,id,OBJPROP_TEXT,value); ObjectSetString(0,id,OBJPROP_FONT,"Arial");
-   ObjectSetInteger(0,id,OBJPROP_FONTSIZE,MathMax(7,PX(9))); ObjectSetInteger(0,id,OBJPROP_COLOR,C_TEXT);
+   ObjectSetInteger(0,id,OBJPROP_FONTSIZE,MathMax(7,(int)MathRound(9*font_scale))); ObjectSetInteger(0,id,OBJPROP_COLOR,C_TEXT);
    ObjectSetInteger(0,id,OBJPROP_BGCOLOR,C_INPUT); ObjectSetInteger(0,id,OBJPROP_BORDER_COLOR,C_BORDER);
    ObjectSetInteger(0,id,OBJPROP_READONLY,false); ObjectSetInteger(0,id,OBJPROP_ALIGN,center?ALIGN_CENTER:ALIGN_LEFT);
 }

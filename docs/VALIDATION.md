@@ -1,30 +1,21 @@
-# Stato delle verifiche
+# Validation notes
 
-Data: 17 settembre 2026.
+September 17, 2026.
 
-## Completato
+## Checked
 
-- Compilazione dell'indicatore completo con MetaEditor installato su MT5/Wine: **0 errori, 0 avvisi**, destinazione X64 Regular.
-- Compilazione del test MQL5 `LevelTests.mq5`: **0 errori, 0 avvisi**.
-- Controllo dei sorgenti di produzione: nessuna chiamata a funzioni di ordine, posizione, conto, rete, notifiche o importazione DLL.
-- Copia di sorgenti, dipendenze locali ed eseguibile EX5 nella cartella Indicators/LevelsZones del terminale installato.
+- The current indicator builds with MetaEditor under Wine: **0 errors, 0 warnings**.
+- The compiled indicator and its source files are installed in MT5.
+- The panel opens on a chart. Panel and label sizing were corrected for Retina displays.
+- A single entered price draws a horizontal line.
+- Two entered prices draw a filled horizontal zone.
+- Applied values remain available after switching between H4 and H1.
+- Production source contains no order, position, account, network, or DLL import calls.
 
-## Da completare prima della pubblicazione
+## Still to check
 
-Il collaudo interattivo non è completato. macOS ha negato l'accesso di automazione all'interfaccia e la cattura disponibile non ha mostrato il contenuto delle finestre.
+The owner will continue manual testing. Clipboard replacement under Wine, dragging and locking, appearance controls, custom fields, separate-chart synchronization, symbol isolation, and a full terminal restart have not all been verified interactively.
 
-È stato tentato anche un terminale portatile separato senza credenziali: il test è stato caricato, ma non è stato ottenuto un report di esecuzione. I test MQL5 sono quindi **compilati, non dichiarati superati**.
+`tests/LevelTests.mq5` compiles without errors or warnings. No execution report was obtained, so these automated tests are **not recorded as passed**.
 
-Verifiche funzionali ancora richieste:
-
-1. Incolla nei campi, Applica e corrispondenza dei livelli alla scala prezzi.
-2. Palette/HEX, colore di riempimento, slider della trasparenza, tratteggio e spessori.
-3. Spostamento della linea, di ciascun estremo e dell'intera zona; aggiornamento dei campi, salvataggio e annullamento con ESC.
-4. Gruppi di etichette vicine e tooltip.
-5. Aggiunta, modifica, visibilità, blocco ed eliminazione dei campi personalizzati.
-6. Cambio timeframe e due grafici dello stesso simbolo, con sincronizzazione e conflitto fra bozze.
-7. Isolamento tra EURUSD e USDJPY o altri simboli.
-8. Riavvio e recupero dei dati; chiusura/riapertura del pannello.
-9. Scorrimento storico, zoom, ridimensionamento e scala del pannello sul display del Mac.
-
-La pubblicazione pubblica su GitHub rimane subordinata al buon esito di queste verifiche, come richiesto dall'utente. Il materiale locale include già la foto di riferimento da allegare.
+The repository image is a design reference, not a screenshot of the running indicator. Test prices are examples only and are not included in the default saved state or release package.
