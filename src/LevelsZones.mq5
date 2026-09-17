@@ -1,6 +1,6 @@
 // Levels and Zones - drawing-only indicator, inspired by the supplied GUI reference.
 #property strict
-#property version "1.05"
+#property version "1.06"
 #property description "Draw horizontal lines and zones. Save and sync by symbol."
 #property indicator_chart_window
 #property indicator_plots 0
@@ -75,6 +75,25 @@ bool CommitDraft()
    if(!SaveLevels(_Symbol,_Digits,normalized,g_revision,next,status)) { StatusLine(); return false; }
    g_revision=next; seen_revision=next; CopyLevels(levels,normalized); CopyLevels(draft,normalized);
    status=""; editing=false; BuildPanel(); RenderLevels(); SaveView(); NotifyCharts(); return true;
+}
+bool ToggleLevelVisibility(const int index)
+{
+   SyncInputs();
+   if(index<0 || index>=ArraySize(draft)) return false;
+   bool visible=!draft[index].visible;
+   Level updated[]; CopyLevels(updated,levels);
+   for(int i=0;i<ArraySize(updated);i++)
+   {
+      if(updated[i].key!=draft[index].key) continue;
+      updated[i].visible=visible;
+      long next=g_revision;
+      if(!SaveLevels(_Symbol,_Digits,updated,g_revision,next,status)) { StatusLine(); return false; }
+      g_revision=next; seen_revision=next; CopyLevels(levels,updated);
+      NotifyCharts(); break;
+   }
+   // New custom rows stay drafts until Apply; existing rows change immediately.
+   draft[index].visible=visible; status=""; editing=false;
+   BuildPanel(); RenderLevels(); return true;
 }
 bool ToggleAllVisibility()
 {
@@ -183,7 +202,7 @@ void ButtonClick(const string name)
    {
       int i=ControlIndex(name,"SET");
       if(i>=0) { expanded=expanded==i?-1:i; if(expanded>=0) first_row=i; }
-      else if((i=ControlIndex(name,"VIS"))>=0) draft[i].visible=!draft[i].visible;
+      else if((i=ControlIndex(name,"VIS"))>=0) { ToggleLevelVisibility(i); return; }
       else if((i=ControlIndex(name,"LOCK"))>=0) draft[i].locked=!draft[i].locked;
       else if((i=ControlIndex(name,"WIDTH"))>=0) draft[i].width=draft[i].width%5+1;
       else if((i=ControlIndex(name,"STYLE"))>=0) draft[i].dashed=!draft[i].dashed;

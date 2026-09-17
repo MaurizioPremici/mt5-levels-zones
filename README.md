@@ -44,7 +44,7 @@ Enter a price in **Price / From**. Leave **To** empty for a line, or enter the o
 Under Wine, double-click a price field to edit it. Check the full value after pasting. Use a decimal point or comma, without thousands separators. Invalid text and prices with too many decimal places are rejected.
 
 - **...** opens appearance settings.
-- **ON/OFF** shows or hides a level.
+- **ON/OFF** immediately shows or hides that saved level without pressing Apply. After All OFF, switch ON just the row you want to see; the others stay OFF. Prices are kept. New custom rows and price edits still need Apply before they can be drawn.
 - **All OFF / All ON** immediately hides or shows every level and zone for the current symbol, including custom fields. Prices and styles are kept. Visibility is saved and synced to the other charts of that symbol; unfinished price edits stay in the draft.
 - **L/U** locks or unlocks movement. Apply the change before dragging.
 - **+ Add field** adds a custom field.
@@ -69,6 +69,10 @@ Removing the indicator removes its drawings from that chart. Saved levels remain
 Templates that include Levels and Zones can be applied again without losing the panel. Version 1.0.3 also supports templates saved by older versions, which may contain stale internal objects. Saved prices are loaded from the current symbol's local store.
 
 A template that does not include the indicator still removes it, as expected in MT5. Add Levels and Zones before saving the template you want to use as Default.
+
+## Changes in 1.0.6
+
+Each row's ON/OFF button now updates the chart immediately. Use All OFF, then turn ON just the level you need. Other rows stay hidden and all saved prices are kept. Clear all is unchanged.
 
 ## Changes in 1.0.5
 
