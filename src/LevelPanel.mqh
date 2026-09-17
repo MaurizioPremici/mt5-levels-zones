@@ -143,6 +143,9 @@ void BuildPanel()
    Box("HEADER",panel_x,panel_y,PX(520),PX(44),C_HEADER,C_BORDER);
    Txt("TITLE","::  Levels and Zones",panel_x+PX(14),panel_y+PX(12),12);
    Txt("SYMBOL",_Symbol,panel_x+PX(335),panel_y+PX(14),10);
+   ObjectSetString(0,UI("HEADER"),OBJPROP_TOOLTIP,"Double-click to collapse / expand. Drag to move.");
+   ObjectSetString(0,UI("TITLE"),OBJPROP_TOOLTIP,"Double-click to collapse / expand. Drag to move.");
+   ObjectSetString(0,UI("SYMBOL"),OBJPROP_TOOLTIP,"Double-click to collapse / expand. Drag to move.");
    Btn("MIN",panel_collapsed?"+":"-",panel_x+PX(444),panel_y+PX(8),PX(28),PX(27),C_HEADER,C_MUTED,"Collapse / expand panel");
    Btn("CLOSE","x",panel_x+PX(480),panel_y+PX(8),PX(27),PX(27),C_HEADER,C_MUTED,"Hide panel and keep drawings");
    if(panel_collapsed) return;

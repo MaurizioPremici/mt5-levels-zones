@@ -1,6 +1,6 @@
 // Levels and Zones - drawing-only indicator, inspired by the supplied GUI reference.
 #property strict
-#property version "1.03"
+#property version "1.04"
 #property description "Draw horizontal lines and zones. Save and sync by symbol."
 #property indicator_chart_window
 #property indicator_plots 0
@@ -25,6 +25,9 @@ bool left_down=false,editing=false;
 int drag_kind=0,drag_index=-1,drag_x=0,drag_y=0,origin_x=0,origin_y=0;
 int drag_limit_x=0,drag_limit_y=0;
 ulong last_panel_frame=0;
+ulong header_pressed_at=0,last_header_click=0;
+int header_click_x=0,header_click_y=0;
+bool header_moved=false;
 double drag_a=0,drag_b=0,drag_step=0;
 uint timer_count=0;
 string ViewPath() { return "LevelsZones\\view_"+IntegerToString(ChartID())+"_"+SymbolKey(_Symbol)+".bin"; }
@@ -239,6 +242,8 @@ void MouseMove(const int x,const int y,const bool down)
 {
    if(drag_kind!=0)
    {
+      if(drag_kind==10 && (MathAbs(x-drag_x)>PX(4) || MathAbs(y-drag_y)>PX(4)))
+      { header_moved=true; last_header_click=0; }
       if(down)
       {
          if(drag_kind==10)
@@ -250,7 +255,19 @@ void MouseMove(const int x,const int y,const bool down)
       }
       else
       {
-         if(drag_kind==10) MovePanel(x,y,true);
+         if(drag_kind==10)
+         {
+            MovePanel(x,y,true);
+            ulong now=GetTickCount64();
+            if(!header_moved && now-header_pressed_at<=500)
+            {
+               if(last_header_click!=0 && now-last_header_click<=450 &&
+                  MathAbs(x-header_click_x)<=PX(4) && MathAbs(y-header_click_y)<=PX(4))
+               { panel_collapsed=!panel_collapsed; last_header_click=0; }
+               else { last_header_click=now; header_click_x=x; header_click_y=y; }
+            }
+            else last_header_click=0;
+         }
          FinishDrag();
       }
       left_down=down; return;
@@ -262,9 +279,10 @@ void MouseMove(const int x,const int y,const bool down)
    {
       if(inside)
       {
-         if(palette_row<0 && y<panel_y+PX(44) && x<panel_x+PX(435))
+         if(!panel_hidden && palette_row<0 && y<panel_y+PX(44) && x<panel_x+PX(435))
          {
             SyncInputs(); drag_kind=10; drag_x=x; drag_y=y; origin_x=panel_x; origin_y=panel_y;
+            header_pressed_at=GetTickCount64(); header_moved=false;
             drag_limit_x=MathMax(0,(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS)-PX(520));
             drag_limit_y=MathMax(0,(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0)-panel_h);
             last_panel_frame=0;
@@ -272,6 +290,7 @@ void MouseMove(const int x,const int y,const bool down)
          else if(palette_row<0 && settings_y>=0 && expanded>=0 && !EmptyPrice(draft[expanded].to) &&
                  y>=settings_y+PX(125) && y<=settings_y+PX(150) && x>=panel_x+PX(157) && x<=panel_x+PX(432))
          { SyncInputs(); drag_kind=11; UpdateSlider(x); }
+         if(drag_kind!=10) last_header_click=0;
       }
       else if(hit>=0)
       {
@@ -284,6 +303,7 @@ void MouseMove(const int x,const int y,const bool down)
             drag_step=YPrice(0)-YPrice(1); CopyLevels(drag_before,levels);
          }
       }
+      else last_header_click=0;
    }
    left_down=down;
 }
@@ -356,7 +376,7 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    {
       if(drag_kind>=1 && drag_kind<=3) { CopyLevels(levels,drag_before); CopyLevels(draft,drag_before); }
       if(drag_kind==10) { panel_x=origin_x; panel_y=origin_y; }
-      drag_kind=0; left_down=false; CaptureScroll(false); BuildPanel(); RenderLevels();
+      drag_kind=0; left_down=false; last_header_click=0; CaptureScroll(false); BuildPanel(); RenderLevels();
    }
 }
 int OnCalculate(const int rates_total,const int prev_calculated,const datetime &time[],const double &open[],const double &high[],const double &low[],const double &close[],const long &tick_volume[],const long &volume[],const int &spread[])

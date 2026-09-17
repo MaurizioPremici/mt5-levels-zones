@@ -50,6 +50,7 @@ Under Wine, double-click a price field to edit it. Check the full value after pa
 - **Up/Down** scrolls through the rows.
 - **Clear all** immediately clears every price, line and zone for the current symbol, including locked and custom fields. Names and styles are kept. The empty values are saved and synced to the other charts of that exact symbol. Other pairs and drawings from other tools are unchanged.
 - **Reload** discards the draft and loads the last saved values.
+- **Double-click the title bar** to collapse or expand the panel. Drag the bar to move it.
 - **x** hides the panel while keeping the drawings visible.
 
 For a zone, drag either edge to resize it or the middle handle to move the whole range. Press Escape to cancel a drag. Apply or discard any draft before moving a drawing.
@@ -67,6 +68,10 @@ Removing the indicator removes its drawings from that chart. Saved levels remain
 Templates that include Levels and Zones can be applied again without losing the panel. Version 1.0.3 also supports templates saved by older versions, which may contain stale internal objects. Saved prices are loaded from the current symbol's local store.
 
 A template that does not include the indicator still removes it, as expected in MT5. Add Levels and Zones before saving the template you want to use as Default.
+
+## Changes in 1.0.4
+
+Double-click the title bar to collapse or expand the panel. Dragging still moves it, and the panel remembers whether it was collapsed.
 
 ## Changes in 1.0.3
 
