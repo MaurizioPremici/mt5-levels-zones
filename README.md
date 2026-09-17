@@ -70,6 +70,10 @@ Templates that include Levels and Zones can be applied again without losing the 
 
 A template that does not include the indicator still removes it, as expected in MT5. Add Levels and Zones before saving the template you want to use as Default.
 
+## Changes in 1.0.7
+
+Chart updates no longer recreate the price fields. If the chart is resized while you are editing, the panel waits until you finish before updating its layout.
+
 ## Changes in 1.0.6
 
 Each row's ON/OFF button now updates the chart immediately. Use All OFF, then turn ON just the level you need. Other rows stay hidden and all saved prices are kept. Clear all is unchanged.

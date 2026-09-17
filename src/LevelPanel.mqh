@@ -3,6 +3,8 @@
 color C_PANEL=C'15,22,29',C_HEADER=C'17,25,34',C_ROW=C'18,27,35',C_SETTINGS=C'25,36,47';
 color C_BORDER=C'46,61,77',C_TEXT=C'226,233,241',C_MUTED=C'137,153,169',C_INPUT=C'12,20,28',C_BLUE=C'31,134,255';
 int settings_y=-1,last_shown=0,palette_row=-1;
+int panel_chart_width=0,panel_chart_height=0;
+bool preserve_edit_controls=false;
 bool palette_fill=false;
 // Cache positions as controls are built. Dragging never reads them back from MT5.
 struct PanelControl { string name; int x,y; };
@@ -45,8 +47,10 @@ void Btn(const string name,const string text,const int x,const int y,const int w
 }
 void Input(const string name,const string value,const int x,const int y,const int w,const bool center=false,const int z=140)
 {
-   string id=UI(name); ObjectCreate(0,id,OBJ_EDIT,0,0,0); Place(id,x,y,w,PX(26),z);
-   ObjectSetString(0,id,OBJPROP_TEXT,value); ObjectSetString(0,id,OBJPROP_FONT,"Arial");
+   string id=UI(name); bool existing=ObjectFind(0,id)>=0;
+   ObjectCreate(0,id,OBJ_EDIT,0,0,0); Place(id,x,y,w,PX(26),z);
+   if(!preserve_edit_controls || !existing) ObjectSetString(0,id,OBJPROP_TEXT,value);
+   ObjectSetString(0,id,OBJPROP_FONT,"Arial");
    ObjectSetInteger(0,id,OBJPROP_FONTSIZE,MathMax(7,(int)MathRound(9*font_scale))); ObjectSetInteger(0,id,OBJPROP_COLOR,C_TEXT);
    ObjectSetInteger(0,id,OBJPROP_BGCOLOR,C_INPUT); ObjectSetInteger(0,id,OBJPROP_BORDER_COLOR,C_BORDER);
    ObjectSetInteger(0,id,OBJPROP_READONLY,false); ObjectSetInteger(0,id,OBJPROP_ALIGN,center?ALIGN_CENTER:ALIGN_LEFT);
@@ -132,10 +136,19 @@ void DrawPalette()
    Btn("PAL_OK","OK",x+PX(184),y+PX(116),PX(65),PX(29),C_BLUE,clrWhite,"Apply HEX color",350);
    Btn("PAL_CANCEL","Cancel",x+PX(260),y+PX(116),PX(94),PX(29),C_INPUT,C_TEXT,"Close color picker",350);
 }
-void BuildPanel()
+void BuildPanel(const bool preserve_inputs=false)
 {
-   ObjectsDeleteAll(0,"LZ_UI_"); ArrayResize(panel_controls,0); settings_y=-1;
+   preserve_edit_controls=preserve_inputs;
+   if(!preserve_inputs) ObjectsDeleteAll(0,"LZ_UI_");
+   else
+      for(int i=ObjectsTotal(0)-1;i>=0;i--)
+      {
+         string id=ObjectName(0,i);
+         if(StringFind(id,"LZ_UI_")==0 && ObjectGetInteger(0,id,OBJPROP_TYPE)!=OBJ_EDIT) ObjectDelete(0,id);
+      }
+   ArrayResize(panel_controls,0); settings_y=-1;
    int cw=(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS),ch=(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0);
+   panel_chart_width=cw; panel_chart_height=ch;
    panel_x=IClamp(panel_x,0,MathMax(0,cw-PX(520)));
    int count=ArraySize(draft),wanted=PX(44+32+92)+count*PX(34)+(expanded>=0 && expanded<count?SettingsH(expanded)+PX(6):0);
    panel_h=panel_collapsed?PX(44):MathMin(wanted,MathMax(PX(280),ch-PX(24)));
@@ -179,7 +192,17 @@ void BuildPanel()
    Btn("APPLY","Apply",panel_x+PX(382),footer+PX(9),PX(124),PX(37),C_BLUE,clrWhite,"Draw, save and sync this symbol");
    Btn("CLEAR","Clear all",panel_x+PX(382),footer+PX(51),PX(124),PX(28),C_ROW,C_TEXT,"Clear all prices, lines and zones for this symbol; keep fields and styles");
    Txt("COUNT",IntegerToString(count)+" fields  |  rows "+IntegerToString(first_row+1)+"-"+IntegerToString(last_shown),panel_x+PX(15),footer+PX(44),8,C_MUTED);
-   Txt("STATUS","",panel_x+PX(15),footer+PX(66),8,C_MUTED); StatusLine(); DrawPalette(); ChartRedraw();
+   Txt("STATUS","",panel_x+PX(15),footer+PX(66),8,C_MUTED); StatusLine(); DrawPalette();
+   if(preserve_inputs)
+      for(int i=ObjectsTotal(0)-1;i>=0;i--)
+      {
+         string id=ObjectName(0,i);
+         if(StringFind(id,"LZ_UI_")!=0 || ObjectGetInteger(0,id,OBJPROP_TYPE)!=OBJ_EDIT) continue;
+         bool used=false;
+         for(int j=0;j<ArraySize(panel_controls);j++) if(panel_controls[j].name==id) { used=true; break; }
+         if(!used) ObjectDelete(0,id);
+      }
+   ChartRedraw();
 }
 bool InPanel(const int x,const int y)
 {

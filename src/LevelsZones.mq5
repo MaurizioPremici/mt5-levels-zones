@@ -1,6 +1,6 @@
 // Levels and Zones - drawing-only indicator, inspired by the supplied GUI reference.
 #property strict
-#property version "1.06"
+#property version "1.07"
 #property description "Draw horizontal lines and zones. Save and sync by symbol."
 #property indicator_chart_window
 #property indicator_plots 0
@@ -381,9 +381,20 @@ void OnTimer()
 {
    if(!initialized || drag_kind!=0) return;
    if(++timer_count%4==0) ReloadSaved(false);
+   RefreshPanelLayout();
    int w=(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS)-72,h=(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0);
    double lo=ChartGetDouble(0,CHART_PRICE_MIN,0),hi=ChartGetDouble(0,CHART_PRICE_MAX,0);
    if(w!=plot_w || h!=plot_h || lo!=view_min || hi!=view_max) RenderLevels();
+}
+void RefreshPanelLayout()
+{
+   // A native edit may still hold text that OBJPROP_TEXT has not committed yet.
+   // Never destroy it for chart updates; defer resize layout until editing ends.
+   if(editing || drag_kind!=0) return;
+   int w=(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS);
+   int h=(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0);
+   if(w==panel_chart_width && h==panel_chart_height) return;
+   SyncInputs(); BuildPanel(true);
 }
 void OnChartEvent(const int id,const long &lparam,const double &dparam,const string &sparam)
 {
@@ -392,9 +403,9 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    if(id==CHARTEVENT_OBJECT_CLICK)
    {
       if(StringFind(sparam,"LZ_UI_")!=0) return;
-      ObjectSetInteger(0,sparam,OBJPROP_STATE,false);
       if(ControlIndex(sparam,"NAME")>=0 || ControlIndex(sparam,"FROM")>=0 || ControlIndex(sparam,"TO")>=0 || sparam==UI("PAL_HEX"))
       { editing=true; return; }
+      if(ObjectGetInteger(0,sparam,OBJPROP_TYPE)==OBJ_BUTTON) ObjectSetInteger(0,sparam,OBJPROP_STATE,false);
       if(StringFind(sparam,"LZ_UI_")==0) ButtonClick(sparam);
       return;
    }
@@ -403,7 +414,7 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    if(id==CHARTEVENT_CHART_CHANGE)
    {
       if(drag_kind!=0) return;
-      SyncInputs(); BuildPanel(); RenderLevels(); return;
+      RefreshPanelLayout(); RenderLevels(); return;
    }
    if(id==CHARTEVENT_CUSTOM+SYNC_EVENT && sparam==_Symbol) { ReloadSaved(dparam==1.0); return; }
    if(id==CHARTEVENT_KEYDOWN && lparam==27 && drag_kind!=0)
