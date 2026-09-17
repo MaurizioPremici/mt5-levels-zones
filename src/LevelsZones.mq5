@@ -1,6 +1,6 @@
 // Levels and Zones - drawing-only indicator, inspired by the supplied GUI reference.
 #property strict
-#property version "1.01"
+#property version "1.02"
 #property description "Draw horizontal lines and zones. Save and sync by symbol."
 #property indicator_chart_window
 #property indicator_plots 0
@@ -50,10 +50,10 @@ void CaptureScroll(const bool capture)
    if(capture==scroll_captured) return;
    ChartSetInteger(0,CHART_MOUSE_SCROLL,capture?false:old_scroll); scroll_captured=capture;
 }
-void NotifyCharts()
+void NotifyCharts(const bool cleared=false)
 {
    for(long id=ChartFirst();id>=0;id=ChartNext(id))
-      if(id!=ChartID() && ChartSymbol(id)==_Symbol) EventChartCustom(id,SYNC_EVENT,g_revision,0,_Symbol);
+      if(id!=ChartID() && ChartSymbol(id)==_Symbol) EventChartCustom(id,SYNC_EVENT,g_revision,cleared?1.0:0.0,_Symbol);
 }
 bool CommitDraft()
 {
@@ -71,6 +71,24 @@ bool CommitDraft()
    if(!SaveLevels(_Symbol,_Digits,normalized,g_revision,next,status)) { StatusLine(); return false; }
    g_revision=next; seen_revision=next; CopyLevels(levels,normalized); CopyLevels(draft,normalized);
    status=""; editing=false; BuildPanel(); RenderLevels(); SaveView(); NotifyCharts(); return true;
+}
+bool ClearAllPrices()
+{
+   SyncInputs(); Level cleared[]; CopyLevels(cleared,draft);
+   for(int i=0;i<ArraySize(cleared);i++)
+   {
+      cleared[i].from=""; cleared[i].to="";
+      string error;
+      if(!ValidateLevel(cleared[i],_Digits,error))
+      { status=cleared[i].name+": "+error; StatusLine(); return false; }
+   }
+   long next=g_revision;
+   if(!SaveLevels(_Symbol,_Digits,cleared,g_revision,next,status)) { StatusLine(); return false; }
+   g_revision=next; seen_revision=next;
+   CopyLevels(levels,cleared); CopyLevels(draft,cleared);
+   editing=false; palette_row=-1; expanded=-1;
+   status="All prices cleared | "+_Symbol;
+   BuildPanel(); RenderLevels(); SaveView(); NotifyCharts(true); return true;
 }
 void ReloadSaved(const bool discard)
 {
@@ -136,6 +154,7 @@ void ButtonClick(const string name)
    if(name==UI("OPEN")) panel_hidden=false;
    else if(name==UI("MIN")) panel_collapsed=!panel_collapsed;
    else if(name==UI("CLOSE")) panel_hidden=true;
+   else if(name==UI("CLEAR")) { ClearAllPrices(); return; }
    else if(name==UI("APPLY")) { CommitDraft(); return; }
    else if(name==UI("RELOAD")) { ReloadSaved(true); return; }
    else if(name==UI("ADD")) AddField();
@@ -310,6 +329,7 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    if(id==CHARTEVENT_MOUSE_MOVE) { MouseMove((int)lparam,(int)dparam,((uint)StringToInteger(sparam)&1)!=0); return; }
    if(id==CHARTEVENT_OBJECT_CLICK)
    {
+      if(StringFind(sparam,"LZ_UI_")!=0) return;
       ObjectSetInteger(0,sparam,OBJPROP_STATE,false);
       if(ControlIndex(sparam,"NAME")>=0 || ControlIndex(sparam,"FROM")>=0 || ControlIndex(sparam,"TO")>=0 || sparam==UI("PAL_HEX"))
       { editing=true; return; }
@@ -323,7 +343,7 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
       if(drag_kind!=0) return;
       SyncInputs(); BuildPanel(); RenderLevels(); return;
    }
-   if(id==CHARTEVENT_CUSTOM+SYNC_EVENT && sparam==_Symbol) { ReloadSaved(false); return; }
+   if(id==CHARTEVENT_CUSTOM+SYNC_EVENT && sparam==_Symbol) { ReloadSaved(dparam==1.0); return; }
    if(id==CHARTEVENT_KEYDOWN && lparam==27 && drag_kind!=0)
    {
       if(drag_kind>=1 && drag_kind<=3) { CopyLevels(levels,drag_before); CopyLevels(draft,drag_before); }

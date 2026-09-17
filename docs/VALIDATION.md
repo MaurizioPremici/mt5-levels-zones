@@ -29,3 +29,8 @@ The repository image is a design reference, not a screenshot of the running indi
 - Compiled with 0 errors and 0 warnings and installed the new EX5.
 
 The English panel was opened and expanded in MT5 under Wine. A short drag moved the complete panel to the requested position while preserving the displayed values. No frame-rate benchmark was run; the owner will check how it feels in normal use.
+
+
+## Clear all update, 2026-09-17
+
+Version 1.0.2 compiled with zero errors and zero warnings and installed; source/binary hashes match the installed files. Reviewed the save-before-redraw path, optimistic revision protection, exact-symbol notification, and clearing of both line and zone endpoints while preserving row metadata. Click events are now scoped to this panel. The Clear all button has not been clicked on the user's saved levels; the user was testing Snapshot during this update.

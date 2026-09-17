@@ -48,6 +48,7 @@ Under Wine, double-click a price field to edit it. Check the full value after pa
 - **L/U** locks or unlocks movement. Apply the change before dragging.
 - **+ Add field** adds a custom field.
 - **Up/Down** scrolls through the rows.
+- **Clear all** immediately clears every price, line and zone for the current symbol, including locked and custom fields. Names and styles are kept. The empty values are saved and synced to the other charts of that exact symbol. Other pairs and drawings from other tools are unchanged.
 - **Reload** discards the draft and loads the last saved values.
 - **x** hides the panel while keeping the drawings visible.
 
@@ -61,6 +62,10 @@ Levels are stored locally in `MQL5/Files/LevelsZones`. A `.bak` file keeps the p
 
 Removing the indicator removes its drawings from that chart. Saved levels remain available when you add it again. The indicator supports up to 128 fields per symbol. It does not manage labels or objects created by other indicators.
 
+## Changes in 1.0.2
+
+Added Clear all. Button events are now restricted to this panel, so clicking another tool no longer resets its buttons.
+
 ## Changes in 1.0.1
 
 The interface is now in English, including tooltips and validation messages. Panel dragging uses cached control positions instead of repeatedly reading them from the chart. Updates are capped at about 30 per second, with the final position applied on release. Saved levels remain compatible with version 1.0.0.
@@ -69,6 +74,6 @@ The interface is now in English, including tooltips and validation messages. Pan
 
 Compiled with **0 errors and 0 warnings**. Basic line drawing, zone drawing, and saved values across H4/H1 changes were checked in MT5 on macOS through Wine. Panel and label sizing were adjusted for Retina displays.
 
-This is an initial release. Full manual testing is still in progress, including clipboard editing under Wine, dragging, and synchronization between separate charts. See [validation notes](docs/VALIDATION.md) for the checks completed so far.
+This is a preview release. Full manual testing is still in progress, including clipboard editing under Wine, dragging, and synchronization between separate charts. See [validation notes](docs/VALIDATION.md) for the checks completed so far.
 
 The original GUI code is kept in `reference`, and the supplied design image is in `docs/gui-reference.png`.
