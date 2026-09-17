@@ -45,6 +45,7 @@ Under Wine, double-click a price field to edit it. Check the full value after pa
 
 - **...** opens appearance settings.
 - **ON/OFF** shows or hides a level.
+- **All OFF / All ON** immediately hides or shows every level and zone for the current symbol, including custom fields. Prices and styles are kept. Visibility is saved and synced to the other charts of that symbol; unfinished price edits stay in the draft.
 - **L/U** locks or unlocks movement. Apply the change before dragging.
 - **+ Add field** adds a custom field.
 - **Up/Down** scrolls through the rows.
@@ -68,6 +69,10 @@ Removing the indicator removes its drawings from that chart. Saved levels remain
 Templates that include Levels and Zones can be applied again without losing the panel. Version 1.0.3 also supports templates saved by older versions, which may contain stale internal objects. Saved prices are loaded from the current symbol's local store.
 
 A template that does not include the indicator still removes it, as expected in MT5. Add Levels and Zones before saving the template you want to use as Default.
+
+## Changes in 1.0.5
+
+Added All OFF / All ON to switch every level's visibility with one click. If some rows are ON and others OFF, the first click turns them all OFF; the next turns them all ON.
 
 ## Changes in 1.0.4
 

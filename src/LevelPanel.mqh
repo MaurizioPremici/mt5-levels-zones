@@ -62,6 +62,11 @@ void SyncInputs()
    }
 }
 bool Dirty() { return !SameLevels(draft,levels); }
+bool AnyDraftVisible()
+{
+   for(int i=0;i<ArraySize(draft);i++) if(draft[i].visible) return true;
+   return false;
+}
 void StatusLine()
 {
    string text=status;
@@ -170,6 +175,7 @@ void BuildPanel()
    Btn("UP","Up",panel_x+PX(167),footer+PX(9),PX(40),PX(28),C_ROW,C_MUTED,"Scroll rows up");
    Btn("DOWN","Down",panel_x+PX(211),footer+PX(9),PX(40),PX(28),C_ROW,C_MUTED,"Scroll rows down");
    Btn("RELOAD","Reload",panel_x+PX(266),footer+PX(9),PX(88),PX(28),C_ROW,C_TEXT,"Discard draft and reload saved levels");
+   Btn("ALL_VIS",AnyDraftVisible()?"All OFF":"All ON",panel_x+PX(266),footer+PX(42),PX(88),PX(22),C_ROW,C_TEXT,"Show / hide all levels and zones immediately; keep prices and draft edits");
    Btn("APPLY","Apply",panel_x+PX(382),footer+PX(9),PX(124),PX(37),C_BLUE,clrWhite,"Draw, save and sync this symbol");
    Btn("CLEAR","Clear all",panel_x+PX(382),footer+PX(51),PX(124),PX(28),C_ROW,C_TEXT,"Clear all prices, lines and zones for this symbol; keep fields and styles");
    Txt("COUNT",IntegerToString(count)+" fields  |  rows "+IntegerToString(first_row+1)+"-"+IntegerToString(last_shown),panel_x+PX(15),footer+PX(44),8,C_MUTED);

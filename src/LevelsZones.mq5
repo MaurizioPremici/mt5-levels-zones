@@ -1,6 +1,6 @@
 // Levels and Zones - drawing-only indicator, inspired by the supplied GUI reference.
 #property strict
-#property version "1.04"
+#property version "1.05"
 #property description "Draw horizontal lines and zones. Save and sync by symbol."
 #property indicator_chart_window
 #property indicator_plots 0
@@ -75,6 +75,20 @@ bool CommitDraft()
    if(!SaveLevels(_Symbol,_Digits,normalized,g_revision,next,status)) { StatusLine(); return false; }
    g_revision=next; seen_revision=next; CopyLevels(levels,normalized); CopyLevels(draft,normalized);
    status=""; editing=false; BuildPanel(); RenderLevels(); SaveView(); NotifyCharts(); return true;
+}
+bool ToggleAllVisibility()
+{
+   SyncInputs();
+   bool visible=!AnyDraftVisible();
+   // Save visibility only; unfinished price edits remain in the draft.
+   Level updated[]; CopyLevels(updated,levels);
+   for(int i=0;i<ArraySize(updated);i++) updated[i].visible=visible;
+   long next=g_revision;
+   if(!SaveLevels(_Symbol,_Digits,updated,g_revision,next,status)) { StatusLine(); return false; }
+   g_revision=next; seen_revision=next; CopyLevels(levels,updated);
+   for(int i=0;i<ArraySize(draft);i++) draft[i].visible=visible;
+   status=""; editing=false;
+   BuildPanel(); RenderLevels(); NotifyCharts(); return true;
 }
 bool ClearAllPrices()
 {
@@ -159,6 +173,7 @@ void ButtonClick(const string name)
    else if(name==UI("MIN")) panel_collapsed=!panel_collapsed;
    else if(name==UI("CLOSE")) panel_hidden=true;
    else if(name==UI("CLEAR")) { ClearAllPrices(); return; }
+   else if(name==UI("ALL_VIS")) { ToggleAllVisibility(); return; }
    else if(name==UI("APPLY")) { CommitDraft(); return; }
    else if(name==UI("RELOAD")) { ReloadSaved(true); return; }
    else if(name==UI("ADD")) AddField();
