@@ -19,10 +19,10 @@ void OnStart()
    Check(!ParsePrice("1.150081",5,p,error),"Reject excess precision");
    Check(!ParsePrice("0",5,p,error) && !ParsePrice("-1",5,p,error),"Reject nonpositive prices");
    Check(!ParsePrice("1e3",5,p,error) && !ParsePrice("1.",5,p,error),"Reject exponents and incomplete decimal");
-   r[0].value_type="ZONE"; r[0].from="1.15100"; r[0].to="1.14900";
-   Check(!ValidateLevel(r[0],5,error),"Reject reversed range");r[0].from="1.14900";r[0].to="1.15100";
+   r[0].from="1.15100"; r[0].to="1.14900";
+   Check(ValidateLevel(r[0],5,error) && r[0].from=="1.14900" && r[0].to=="1.15100","Normalize reversed range");
    r[1].to="1.2"; Check(!ValidateLevel(r[1],5,error),"Reject missing first endpoint"); r[1].to="";
-   r[2].from="1.2"; r[2].to="1.2"; Check(ValidateLevel(r[2],5,error),"Allow equal zone endpoints"); r[2].from="";r[2].to="";
+   r[2].from="1.2"; r[2].to="1.2"; Check(!ValidateLevel(r[2],5,error),"Reject zero-width range"); r[2].from="";r[2].to="";
    color c; Check(ParseHex("#1F86FF",c) && HexColor(c)=="#1F86FF","Exact RGB/BGR conversion");
    Check(!ParseHex("#GG0011",c),"Reject invalid HEX");
    Check(SymbolKey("EURUSD")!=SymbolKey("USDJPY") && SymbolKey("EURUSD.a")!=SymbolKey("EURUSD_a"),"Exact distinct symbol keys");
