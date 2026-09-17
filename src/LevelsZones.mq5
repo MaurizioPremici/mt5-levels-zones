@@ -1,13 +1,13 @@
-// Livelli e zone - drawing-only indicator, inspired by the supplied GUI reference.
+// Levels and Zones - drawing-only indicator, inspired by the supplied GUI reference.
 #property strict
-#property version "1.00"
-#property description "Linee e zone manuali. Salvataggio e sincronizzazione per simbolo."
+#property version "1.01"
+#property description "Draw horizontal lines and zones. Save and sync by symbol."
 #property indicator_chart_window
 #property indicator_plots 0
 #property indicator_buffers 0
 #include "LevelModel.mqh"
 #include "LevelStore.mqh"
-input double PanelScale=1.0; // Scala pannello (0.75 - 1.75)
+input double PanelScale=1.0; // Panel scale (0.75 - 1.75)
 #define SYNC_EVENT 17051
 Level levels[],draft[],drag_before[];
 long g_revision=0,seen_revision=0;
@@ -22,6 +22,8 @@ int DP(const int n) { return (int)MathRound(n*scale/font_scale); }
 bool old_mouse_move=false,old_scroll=true,old_foreground=false,scroll_captured=false;
 bool left_down=false,editing=false;
 int drag_kind=0,drag_index=-1,drag_x=0,drag_y=0,origin_x=0,origin_y=0;
+int drag_limit_x=0,drag_limit_y=0;
+ulong last_panel_frame=0;
 double drag_a=0,drag_b=0,drag_step=0;
 uint timer_count=0;
 string ViewPath() { return "LevelsZones\\view_"+IntegerToString(ChartID())+"_"+SymbolKey(_Symbol)+".bin"; }
@@ -73,15 +75,16 @@ bool CommitDraft()
 void ReloadSaved(const bool discard)
 {
    if(drag_kind!=0) return;
-   SyncInputs(); Level loaded[]; long next=0; string error;
+   Level loaded[]; long next=0; string error;
    if(!LoadLevels(_Symbol,_Digits,loaded,next,error)) { status=error; StatusLine(); return; }
    if(!discard && next==seen_revision) return;
+   SyncInputs();
    bool dirty=Dirty() || editing;
    seen_revision=next;
    if(!discard && dirty)
    {
       CopyLevels(levels,loaded);
-      status="Altro grafico aggiornato: Ricarica prima di applicare";
+      status="Another chart updated: Reload before applying";
       StatusLine(); RenderLevels(); return;
    }
    CopyLevels(levels,loaded); CopyLevels(draft,loaded); g_revision=next;
@@ -91,11 +94,11 @@ void ReloadSaved(const bool discard)
 }
 void AddField()
 {
-   if(ArraySize(draft)>=LZ_MAX) { status="Limite di 128 campi raggiunto"; StatusLine(); return; }
+   if(ArraySize(draft)>=LZ_MAX) { status="Maximum of 128 fields reached"; StatusLine(); return; }
    int n=ArraySize(draft),key=LZ_BASE;
    for(int i=0;i<n;i++) key=MathMax(key,draft[i].key);
    ArrayResize(draft,n+1);
-   draft[n].key=key+1; draft[n].name="Livello "+IntegerToString(n-LZ_BASE+1);
+   draft[n].key=key+1; draft[n].name="Level "+IntegerToString(n-LZ_BASE+1);
    draft[n].from=""; draft[n].to=""; draft[n].stroke=C'255,218,26'; draft[n].fill=draft[n].stroke;
    draft[n].width=1; draft[n].transparency=80; draft[n].visible=true; draft[n].locked=true;
    draft[n].custom=true; draft[n].dashed=false; first_row=n; expanded=-1;
@@ -123,7 +126,7 @@ void ButtonClick(const string name)
       {
          color c;
          if(ParseHex(ObjectGetString(0,UI("PAL_HEX"),OBJPROP_TEXT),c)) SetPaletteColor(c);
-         else { status="Colore HEX non valido: esempio #1F86FF"; StatusLine(); }
+         else { status="Invalid HEX color; example: #1F86FF"; StatusLine(); }
          return;
       }
       for(int p=0;p<ArraySize(palette);p++) if(name==UI("PAL_"+IntegerToString(p))) { SetPaletteColor(palette[p]); return; }
@@ -196,6 +199,22 @@ void FinishDrag()
    if(kind==10) { SaveView(); BuildPanel(); RenderLevels(); }
    if(kind==11) { BuildPanel(); }
 }
+void MovePanel(const int x,const int y,const bool force=false)
+{
+   ulong now=GetTickCount64();
+   if(!force && now-last_panel_frame<33) return;
+   int nx=IClamp(origin_x+x-drag_x,0,drag_limit_x);
+   int ny=IClamp(origin_y+y-drag_y,0,drag_limit_y);
+   if(nx==panel_x && ny==panel_y) return;
+   int dy=ny-panel_y;
+   for(int j=0;j<ArraySize(panel_controls);j++)
+   {
+      ObjectSetInteger(0,panel_controls[j].name,OBJPROP_XDISTANCE,nx+panel_controls[j].x);
+      ObjectSetInteger(0,panel_controls[j].name,OBJPROP_YDISTANCE,ny+panel_controls[j].y);
+   }
+   panel_x=nx; panel_y=ny; if(settings_y>=0) settings_y+=dy;
+   ChartRedraw(); last_panel_frame=GetTickCount64();
+}
 void MouseMove(const int x,const int y,const bool down)
 {
    if(drag_kind!=0)
@@ -204,26 +223,16 @@ void MouseMove(const int x,const int y,const bool down)
       {
          if(drag_kind==10)
          {
-            int cw=(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS),ch=(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0);
-            int nx=IClamp(origin_x+x-drag_x,0,MathMax(0,cw-PX(520)));
-            int ny=IClamp(origin_y+y-drag_y,0,MathMax(0,ch-panel_h));
-            int dx=nx-panel_x,dy=ny-panel_y;
-            if(dx!=0 || dy!=0)
-            {
-               for(int j=ObjectsTotal(0)-1;j>=0;j--)
-               {
-                  string name=ObjectName(0,j); if(StringFind(name,"LZ_UI_")!=0) continue;
-                  ObjectSetInteger(0,name,OBJPROP_XDISTANCE,ObjectGetInteger(0,name,OBJPROP_XDISTANCE)+dx);
-                  ObjectSetInteger(0,name,OBJPROP_YDISTANCE,ObjectGetInteger(0,name,OBJPROP_YDISTANCE)+dy);
-               }
-               panel_x=nx; panel_y=ny; if(settings_y>=0) settings_y+=dy;
-               ChartRedraw();
-            }
+            MovePanel(x,y);
          }
          else if(drag_kind==11) UpdateSlider(x);
          else DragLevel(y);
       }
-      else FinishDrag();
+      else
+      {
+         if(drag_kind==10) MovePanel(x,y,true);
+         FinishDrag();
+      }
       left_down=down; return;
    }
    bool inside=InPanel(x,y);
@@ -236,6 +245,9 @@ void MouseMove(const int x,const int y,const bool down)
          if(palette_row<0 && y<panel_y+PX(44) && x<panel_x+PX(435))
          {
             SyncInputs(); drag_kind=10; drag_x=x; drag_y=y; origin_x=panel_x; origin_y=panel_y;
+            drag_limit_x=MathMax(0,(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS)-PX(520));
+            drag_limit_y=MathMax(0,(int)ChartGetInteger(0,CHART_HEIGHT_IN_PIXELS,0)-panel_h);
+            last_panel_frame=0;
          }
          else if(palette_row<0 && settings_y>=0 && expanded>=0 && !EmptyPrice(draft[expanded].to) &&
                  y>=settings_y+PX(125) && y<=settings_y+PX(150) && x>=panel_x+PX(157) && x<=panel_x+PX(432))
@@ -244,7 +256,7 @@ void MouseMove(const int x,const int y,const bool down)
       else if(hit>=0)
       {
          SyncInputs();
-         if(Dirty()) { status="Applica o ricarica la bozza prima di trascinare"; StatusLine(); }
+         if(Dirty()) { status="Apply or reload the draft before dragging"; StatusLine(); }
          else
          {
             drag_kind=mode; drag_index=hit; drag_y=y;
@@ -257,12 +269,12 @@ void MouseMove(const int x,const int y,const bool down)
 }
 int OnInit()
 {
-   if(ObjectFind(0,"LZ_INSTANCE")>=0) { Print("Livelli e zone: indicatore gia presente su questo grafico."); return INIT_FAILED; }
+   if(ObjectFind(0,"LZ_INSTANCE")>=0) { Print("Levels and Zones: indicator already on this chart."); return INIT_FAILED; }
    ObjectCreate(0,"LZ_INSTANCE",OBJ_LABEL,0,0,0);
    ObjectSetString(0,"LZ_INSTANCE",OBJPROP_TEXT,""); ObjectSetInteger(0,"LZ_INSTANCE",OBJPROP_HIDDEN,true);
    initialized=true; font_scale=MathMax(0.75,MathMin(1.75,PanelScale));
    scale=font_scale*MathMax(1.0,(double)TerminalInfoInteger(TERMINAL_SCREEN_DPI)/96.0);
-   IndicatorSetString(INDICATOR_SHORTNAME,"Livelli e zone");
+   IndicatorSetString(INDICATOR_SHORTNAME,"Levels and Zones");
    old_mouse_move=(bool)ChartGetInteger(0,CHART_EVENT_MOUSE_MOVE);
    old_scroll=(bool)ChartGetInteger(0,CHART_MOUSE_SCROLL);
    old_foreground=(bool)ChartGetInteger(0,CHART_FOREGROUND);
@@ -273,7 +285,7 @@ int OnInit()
    panel_x=MathMax(0,(int)ChartGetInteger(0,CHART_WIDTH_IN_PIXELS)-PX(532)); panel_y=PX(12); LoadView();
    // Canvas first so UI objects remain in front even after a chart refresh.
    RenderLevels(); BuildPanel(); RenderLevels();
-   if(!EventSetMillisecondTimer(250)) { status="Timer non disponibile"; StatusLine(); return INIT_FAILED; }
+   if(!EventSetMillisecondTimer(250)) { status="Timer unavailable"; StatusLine(); return INIT_FAILED; }
    return INIT_SUCCEEDED;
 }
 void OnDeinit(const int reason)
@@ -315,6 +327,7 @@ void OnChartEvent(const int id,const long &lparam,const double &dparam,const str
    if(id==CHARTEVENT_KEYDOWN && lparam==27 && drag_kind!=0)
    {
       if(drag_kind>=1 && drag_kind<=3) { CopyLevels(levels,drag_before); CopyLevels(draft,drag_before); }
+      if(drag_kind==10) { panel_x=origin_x; panel_y=origin_y; }
       drag_kind=0; left_down=false; CaptureScroll(false); BuildPanel(); RenderLevels();
    }
 }

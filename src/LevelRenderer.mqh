@@ -113,7 +113,7 @@ void DrawTags()
          string tip="";
          for(int j=i;j<end;j++) tip+=(j>i?"\n":"")+LevelDetail(indexes[j]);
          int y=IClamp(MathMax(last+DP(24),ys[i]),DP(4),plot_h-DP(26));
-         ChartTag(IntegerToString(i),IntegerToString(count)+" livelli",tip,y,levels[indexes[i]].stroke,true);
+         ChartTag(IntegerToString(i),IntegerToString(count)+" levels",tip,y,levels[indexes[i]].stroke,true);
          last=y;
       }
       else
@@ -137,7 +137,7 @@ bool RenderLevels()
    if(!canvas_ready)
    {
       canvas_ready=drawing.CreateBitmapLabel(0,0,"LZ_CANVAS",0,0,plot_w,plot_h,COLOR_FORMAT_ARGB_NORMALIZE);
-      if(!canvas_ready) { status="Impossibile creare il disegno"; return false; }
+      if(!canvas_ready) { status="Unable to create chart drawing"; return false; }
       ObjectSetInteger(0,"LZ_CANVAS",OBJPROP_BACK,true);
       ObjectSetInteger(0,"LZ_CANVAS",OBJPROP_SELECTABLE,false);
       ObjectSetInteger(0,"LZ_CANVAS",OBJPROP_HIDDEN,true);

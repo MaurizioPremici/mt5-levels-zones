@@ -16,36 +16,36 @@ bool EmptyPrice(string s) { s=Trim(s); return s=="" || s=="-" || s=="—"; }
 bool ParsePrice(string s,const int digits,double &value,string &message)
 {
    s=Trim(s); value=0; message="";
-   if(EmptyPrice(s)) { message="Prezzo mancante"; return false; }
+   if(EmptyPrice(s)) { message="Missing price"; return false; }
    int sep=-1,decimal_count=0,n=StringLen(s);
    for(int i=0;i<n;i++)
    {
       ushort c=StringGetCharacter(s,i);
       if(c=='.' || c==',')
       {
-         if(sep>=0) { message="Usa un solo separatore decimale"; return false; }
+         if(sep>=0) { message="Use one decimal separator"; return false; }
          sep=i;
       }
-      else if(c<'0' || c>'9') { message="Inserisci solo un prezzo"; return false; }
+      else if(c<'0' || c>'9') { message="Enter a price only"; return false; }
    }
-   if(sep==0 || sep==n-1) { message="Prezzo incompleto"; return false; }
+   if(sep==0 || sep==n-1) { message="Incomplete price"; return false; }
    if(sep>=0) decimal_count=n-sep-1;
-   if(decimal_count>digits) { message="Troppi decimali per questa coppia"; return false; }
+   if(decimal_count>digits) { message="Too many decimal places for this symbol"; return false; }
    StringReplace(s,",","."); value=StringToDouble(s);
    if(!MathIsValidNumber(value) || value<=0 || value>1e12)
-   { message="Il prezzo deve essere positivo"; return false; }
+   { message="Price must be positive and no greater than 1e12"; return false; }
    value=NormalizeDouble(value,digits); return true;
 }
 bool ValidateLevel(Level &r,const int digits,string &message)
 {
    r.name=Trim(r.name);
    if(StringLen(r.name)==0 || StringLen(r.name)>48 || StringFind(r.name,"\n")>=0 || StringFind(r.name,"\r")>=0)
-   { message="Nome richiesto, massimo 48 caratteri"; return false; }
+   { message="Name required, up to 48 characters"; return false; }
    if(r.width<1 || r.width>5 || r.transparency<0 || r.transparency>100)
-   { message="Stile non valido"; return false; }
+   { message="Invalid style"; return false; }
    if(EmptyPrice(r.from))
    {
-      if(!EmptyPrice(r.to)) { message="Inserisci prima Prezzo / Da"; return false; }
+      if(!EmptyPrice(r.to)) { message="Enter Price / From first"; return false; }
       r.from=""; r.to=""; return true;
    }
    double a,b;
@@ -53,7 +53,7 @@ bool ValidateLevel(Level &r,const int digits,string &message)
    r.from=DoubleToString(a,digits);
    if(EmptyPrice(r.to)) { r.to=""; return true; }
    if(!ParsePrice(r.to,digits,b,message)) return false;
-   if(a==b) { message="Gli estremi della zona devono essere diversi"; return false; }
+   if(a==b) { message="Zone prices must be different"; return false; }
    r.from=DoubleToString(MathMin(a,b),digits);
    r.to=DoubleToString(MathMax(a,b),digits);
    return true;

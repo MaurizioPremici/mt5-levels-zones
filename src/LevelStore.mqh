@@ -54,7 +54,7 @@ bool LoadLevels(const string symbol,const int digits,Level &rows[],long &revisio
    error=""; string path=DataFile(symbol);
    if(!FileIsExist(path)) { DefaultLevels(rows); revision=0; return true; }
    if(ReadStoreFile(path,symbol,digits,rows,revision)) return true;
-   error="Salvataggio non leggibile: originale conservato"; return false;
+   error="Cannot read saved data; original file kept"; return false;
 }
 // Optimistic revision check under a per-symbol exclusive lock. Never overwrite a newer draft.
 bool SaveLevels(const string symbol,const int digits,const Level &rows[],const long expected,long &new_revision,string &error)
@@ -62,10 +62,10 @@ bool SaveLevels(const string symbol,const int digits,const Level &rows[],const l
    error=""; FolderCreate("LevelsZones");
    string path=DataFile(symbol),tmp=path+"."+IntegerToString(ChartID())+".tmp";
    int lock=FileOpen(path+".lock",FILE_READ|FILE_WRITE|FILE_BIN);
-   if(lock==INVALID_HANDLE) { error="Coppia occupata: riprova Applica"; return false; }
+   if(lock==INVALID_HANDLE) { error="Symbol is busy; try Apply again"; return false; }
    Level existing[]; long current=0;
    bool ok=LoadLevels(symbol,digits,existing,current,error);
-   if(ok && current!=expected) { error="Modifiche da altro grafico: usa Ricarica"; ok=false; }
+   if(ok && current!=expected) { error="Another chart has changes; use Reload"; ok=false; }
    int h=INVALID_HANDLE;
    if(ok)
    {
@@ -95,7 +95,7 @@ bool SaveLevels(const string symbol,const int digits,const Level &rows[],const l
    }
    if(ok && FileIsExist(path)) ok=FileCopy(path,0,path+".bak",FILE_REWRITE);
    if(ok) ok=FileMove(tmp,0,path,FILE_REWRITE);
-   if(!ok && error=="") error="Salvataggio fallito: livelli precedenti conservati";
+   if(!ok && error=="") error="Save failed; previous levels kept";
    if(FileIsExist(tmp)) FileDelete(tmp);
    FileClose(lock);
    if(ok) new_revision=current+1;

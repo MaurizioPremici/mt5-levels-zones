@@ -1,6 +1,6 @@
 # MT5 Levels and Zones
 
-A chart panel for drawing horizontal lines and price zones in MetaTrader 5. Enter a price, give it a name, and choose how it looks. Built for manual chart marking, with an Italian interface.
+A chart panel for drawing horizontal lines and price zones in MetaTrader 5. Enter a price, give it a name, and choose how it looks. Built for manual chart marking, with an English interface.
 
 It draws only. It does not place orders, read positions, or generate trading signals.
 
@@ -39,16 +39,16 @@ You can pass a different MT5 data folder with `python3 build/install.py --data-d
 
 ## Use
 
-Enter a price in **Prezzo / Da**. Leave **A** empty for a line, or enter the other end of the range for a zone. Click **Applica** to draw and save. Changes in the panel remain a draft until you apply them.
+Enter a price in **Price / From**. Leave **To** empty for a line, or enter the other end of the range for a zone. Click **Apply** to draw and save. Changes in the panel remain a draft until you apply them.
 
 Under Wine, double-click a price field to edit it. Check the full value after pasting. Use a decimal point or comma, without thousands separators. Invalid text and prices with too many decimal places are rejected.
 
 - **...** opens appearance settings.
 - **ON/OFF** shows or hides a level.
 - **L/U** locks or unlocks movement. Apply the change before dragging.
-- **+ Aggiungi campo** adds a custom field.
-- **Su/Giu** scrolls through the rows.
-- **Ricarica** discards the draft and loads the last saved values.
+- **+ Add field** adds a custom field.
+- **Up/Down** scrolls through the rows.
+- **Reload** discards the draft and loads the last saved values.
 - **x** hides the panel while keeping the drawings visible.
 
 For a zone, drag either edge to resize it or the middle handle to move the whole range. Press Escape to cancel a drag. Apply or discard any draft before moving a drawing.
@@ -60,6 +60,10 @@ Transparency runs from 0% (opaque) to 100% (invisible). The default is 80%. `Pan
 Levels are stored locally in `MQL5/Files/LevelsZones`. A `.bak` file keeps the previous saved version. If two charts edit the same symbol, an older draft cannot overwrite a newer save without reloading first.
 
 Removing the indicator removes its drawings from that chart. Saved levels remain available when you add it again. The indicator supports up to 128 fields per symbol. It does not manage labels or objects created by other indicators.
+
+## Changes in 1.0.1
+
+The interface is now in English, including tooltips and validation messages. Panel dragging uses cached control positions instead of repeatedly reading them from the chart. Updates are capped at about 30 per second, with the final position applied on release. Saved levels remain compatible with version 1.0.0.
 
 ## Current status
 
